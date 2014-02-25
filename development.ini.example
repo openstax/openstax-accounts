@@ -1,0 +1,14 @@
+[app:main]
+use = egg:openstax-accounts-pyramid
+
+openstax_accounts.server_url = https://localhost:3000/
+openstax_accounts.application_id = 940128529654aaaa8826654d3da1b992d815cd4bc2563e13dc66e6b18728dedf
+openstax_accounts.application_secret = 226af66711708a044620199daf68a95a201e893c9f9cff2d46a5437520dda21e
+openstax_accounts.application_url = http://localhost:8000/
+openstax_accounts.login_path = /login
+openstax_accounts.callback_path = /callback
+
+[server:main]
+use = egg:waitress#main
+host = 0.0.0.0
+port = 8000

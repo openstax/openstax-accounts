@@ -12,6 +12,8 @@ from pyramid.session import UnencryptedCookieSessionFactoryConfig
 from pyramid.url import route_url
 from pyramid.view import view_config
 
+from .interfaces import *
+
 class Site(object):
     __name__ = ''
     __parent__ = None
@@ -38,6 +40,7 @@ def menu(request):
     <li>You are currently {login_status}.</li>
     <li><a href="{hello_world_path}">Hello World!</a></li>
     <li><a href="{profile_path}">Profile</a></li>
+    <li><a href="{user_search_path}">User Search</a></li>
     <li><a href="{login_logout_path}">{login_logout_text}</a></li>
 </ul>'''.format(
         login_status=login_status,
@@ -45,6 +48,7 @@ def menu(request):
         login_logout_path=login_logout_path,
         login_logout_text=login_logout_text,
         profile_path=request.route_url('profile'),
+        user_search_path=request.route_url('user-search'),
         )
 
 @view_config(route_name='index')
@@ -62,6 +66,11 @@ def profile(request):
         '<li><strong>{}</strong>: {}</li>'.format(k, v)
         for k, v in user.iteritems()]) + '</ul>'
     return Response(menu(request) + '<p>Profile</p>' + profile)
+
+@view_config(route_name='user-search', context=Site)
+def user_search(request):
+    users = request.registry.getUtility(IOpenstaxAccounts).request('/api/users/search.json?q=*')
+    return Response(menu(request) + '<p>User Search</p>{}'.format(users))
 
 @view_config(route_name='callback', context=Site, permission='protected')
 def callback(request):
@@ -88,12 +97,14 @@ def main(global_config, **settings):
     config.add_route('index', '/')
     config.add_route('hello-world', '/hello-world')
     config.add_route('profile', '/profile')
+    config.add_route('user-search', '/users/search')
     config.add_route('callback', '/callback')
     config.add_route('login', '/login')
     config.add_route('logout', '/logout')
     config.scan(ignore='openstax_accounts_pyramid.tests')
 
     # use the openstax accounts authentication policy
+    config.include('openstax_accounts_pyramid.openstax_accounts.main')
     config.include('openstax_accounts_pyramid.authentication_policy.main')
 
     # authorization policy must be set if an authentication policy is set

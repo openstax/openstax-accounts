@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import setup
 
 setup(
         name='openstax-accounts-pyramid',
@@ -8,13 +8,17 @@ setup(
         author='Karen Chan',
         author_email='karen@karen-chan.com',
         url='http://github.com/karenc/openstax-accounts-pyramid',
-        packages=find_packages(),
+        packages=['openstax_accounts_pyramid'],
         install_requires=(
             'PasteDeploy',
             'pyramid',
             'sanction',
             'waitress',
             ),
+        tests_require=(
+            'selenium',
+            ),
+        test_suite='openstax_accounts_pyramid.tests',
         entry_points={
             'paste.app_factory': [
                 'main = openstax_accounts_pyramid.example:main',

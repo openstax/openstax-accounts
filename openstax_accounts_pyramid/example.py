@@ -91,7 +91,7 @@ def main(global_config, **settings):
     config.add_route('callback', '/callback')
     config.add_route('login', '/login')
     config.add_route('logout', '/logout')
-    config.scan()
+    config.scan(ignore='openstax_accounts_pyramid.tests')
 
     # use the openstax accounts authentication policy
     config.include('openstax_accounts_pyramid.authentication_policy.main')

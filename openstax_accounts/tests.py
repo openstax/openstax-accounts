@@ -42,6 +42,14 @@ class FunctionalTests(unittest.TestCase):
         cls.app_url = cls.config.get('app:main', 'openstax_accounts.application_url')
         cls.accounts_url = cls.config.get('app:main', 'openstax_accounts.server_url')
 
+        admin_login = cls.config.get('app:main', 'openstax_accounts.admin_login')
+        admin_password = cls.config.get('app:main', 'openstax_accounts.admin_password')
+
+        # login as admin in openstax/accounts
+        cls.driver.get(urlparse.urljoin(cls.accounts_url, '/login'))
+        cls.class_fill_in('Username', admin_login)
+        cls.class_fill_in('Password', admin_password)
+        cls.driver.find_element_by_xpath('//button[text()="Sign in"]').click()
         # register our app with openstax/accounts
         cls.driver.get(urlparse.urljoin(cls.accounts_url, '/oauth/applications'))
         cls.driver.find_element_by_link_text('New Application').click()

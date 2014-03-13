@@ -24,7 +24,6 @@ def log(method):
     @functools.wraps(method)
     def wrapper(self, *args, **kwargs):
         result = method(self, *args, **kwargs)
-        print repr(result)
         return result
     return wrapper
 
@@ -71,7 +70,6 @@ class FunctionalTests(unittest.TestCase):
         # start server
         cls.server = subprocess.Popen(['./bin/pserve', cls.testing_ini])
 
-        print 'starting server'
         import time
         time.sleep(3)
 

@@ -1,5 +1,5 @@
 [app:main]
-use = egg:openstax-accounts-pyramid
+use = egg:openstax-accounts
 openstax_accounts.server_url = https://localhost:3000/
 openstax_accounts.admin_login = admin
 openstax_accounts.admin_password = password

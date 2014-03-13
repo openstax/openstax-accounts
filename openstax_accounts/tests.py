@@ -180,8 +180,8 @@ class FunctionalTests(unittest.TestCase):
         if confirm:
             confirm[0].click()
         # redirected back to openstax accounts
-        self.assertTrue('Great, you are signed in' in self.page_text())
-        self.follow_link('I have not made', exact=False)
+        if 'Great, you are signed in' in self.page_text():
+            self.follow_link('I have not made', exact=False)
         # profile form
         if 'Complete your profile' in self.page_text():
             self.driver.find_element_by_id('register_i_agree').click()
@@ -213,8 +213,8 @@ class FunctionalTests(unittest.TestCase):
         password.send_keys(twitter['password'])
         self.driver.find_element_by_id('allow').click()
         # redirected back to openstax accounts
-        self.assertTrue('Great, you are signed in' in self.page_text())
-        self.follow_link('I have not made', exact=False)
+        if 'Great, you are signed in' in self.page_text():
+            self.follow_link('I have not made', exact=False)
         # profile form
         if 'Complete your profile' in self.page_text():
             self.driver.find_element_by_id('register_i_agree').click()
@@ -246,8 +246,8 @@ class FunctionalTests(unittest.TestCase):
         password.send_keys(google['password'])
         self.driver.find_element_by_id('signIn').click()
         # redirected back to openstax accounts
-        self.assertTrue('Great, you are signed in' in self.page_text())
-        self.follow_link('I have not made', exact=False)
+        if 'Great, you are signed in' in self.page_text():
+            self.follow_link('I have not made', exact=False)
         # profile form
         if 'Complete your profile' in self.page_text():
             self.driver.find_element_by_id('register_i_agree').click()

@@ -2,10 +2,13 @@
 
 import json
 import urllib
-import urlparse
+try:
+    import urlparse # python2
+except ImportError:
+    import urllib.parse as urlparse # renamed in python3
 
 import sanction
-from zope.interface import implements
+from zope.interface import implementer
 
 from .interfaces import *
 
@@ -17,8 +20,8 @@ def parser_remove_null_expires_in(data):
         data.pop('expires_in')
     return data
 
+@implementer(IOpenstaxAccounts)
 class OpenstaxAccounts(object):
-    implements(IOpenstaxAccounts)
 
     def __init__(self, server_url, application_id, application_secret,
             application_url):

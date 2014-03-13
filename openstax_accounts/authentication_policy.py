@@ -3,7 +3,7 @@
 from pyramid.httpexceptions import HTTPFound
 from pyramid.interfaces import IAuthenticationPolicy
 from pyramid.security import Everyone, Authenticated
-from zope.interface import implements
+from zope.interface import implementer
 
 from .interfaces import *
 
@@ -14,8 +14,8 @@ def get_user_from_session(request):
     return request.session.get('profile')
 
 
+@implementer(IAuthenticationPolicy)
 class OpenstaxAccountsAuthenticationPolicy(object):
-    implements(IAuthenticationPolicy)
 
     def __init__(self, client, login_path, callback_path):
         self.client = client

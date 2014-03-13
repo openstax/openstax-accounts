@@ -1,11 +1,17 @@
-import ConfigParser
+try:
+    import ConfigParser # python2
+except ImportError:
+    import configparser as ConfigParser # renamed in python3
 import functools
 import os
 import random
 import subprocess
 import re
 import unittest
-import urlparse
+try:
+    import urlparse # python2
+except ImportError:
+    import urllib.parse as urlparse # renamed in python3
 
 from selenium import webdriver
 
@@ -16,7 +22,8 @@ def screenshot_on_error(method):
             return method(self, *args, **kwargs)
         except:
             self.driver.get_screenshot_as_file('error.png')
-            open('error.html', 'w').write(self.driver.page_source.encode('utf-8'))
+            with open('error.html', 'w') as f:
+                f.write(self.driver.page_source)
             raise
     return wrapper
 
@@ -65,7 +72,8 @@ class FunctionalTests(unittest.TestCase):
         cls.config.set('app:main', 'openstax_accounts.application_secret',
                 application_secret)
 
-        cls.config.write(open(cls.testing_ini, 'w'))
+        with open(cls.testing_ini, 'w') as f:
+            cls.config.write(f)
 
         # start server
         cls.server = subprocess.Popen(['./bin/pserve', cls.testing_ini])

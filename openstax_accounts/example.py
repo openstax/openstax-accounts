@@ -64,7 +64,7 @@ def profile(request):
     user = request.user
     profile = '<ul>' + ''.join([
         '<li><strong>{}</strong>: {}</li>'.format(k, v)
-        for k, v in user.iteritems()]) + '</ul>'
+        for k, v in user.items()]) + '</ul>'
     return Response(menu(request) + '<p>Profile</p>' + profile)
 
 @view_config(route_name='user-search', context=Site)

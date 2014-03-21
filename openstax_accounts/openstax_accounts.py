@@ -25,6 +25,7 @@ class OpenstaxAccounts(object):
 
     def __init__(self, server_url, application_id, application_secret,
             application_url):
+        self.server_url = server_url
         resource_url = server_url
         authorize_url = urlparse.urljoin(server_url, '/oauth/authorize')
         token_url = urlparse.urljoin(server_url, '/oauth/token')

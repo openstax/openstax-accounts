@@ -1,5 +1,14 @@
 # -*- coding: utf-8 -*-
 
+try:
+    import urlparse # python2
+except ImportError:
+    import urllib.parse as urlparse # renamed in python3
+try:
+    from urllib import urlencode # python2
+except ImportError:
+    from urllib.parse import urlencode # moved in python3
+
 from pyramid.httpexceptions import HTTPFound
 from pyramid.interfaces import IAuthenticationPolicy
 from pyramid.security import Everyone, Authenticated
@@ -17,10 +26,13 @@ def get_user_from_session(request):
 @implementer(IAuthenticationPolicy)
 class OpenstaxAccountsAuthenticationPolicy(object):
 
-    def __init__(self, client, login_path, callback_path):
+    def __init__(self, client, application_url, login_path, callback_path,
+            logout_path):
         self.client = client
+        self.application_url = application_url
         self.login_path = login_path
         self.callback_path = callback_path
+        self.logout_path = logout_path
 
     def _login(self, request):
         raise HTTPFound(location=self.client.auth_uri())
@@ -56,7 +68,12 @@ class OpenstaxAccountsAuthenticationPolicy(object):
         pass
 
     def forget(self, request):
-        request.session.clear()
+        if self.unauthenticated_userid(request):
+            logout_url = urlparse.urljoin(self.client.server_url, '/logout')
+            return_to = urlparse.urljoin(self.application_url, self.logout_path)
+            params = urlencode({'return_to': return_to})
+            request.session.clear()
+            raise HTTPFound(location='?'.join([logout_url, params]))
 
 
 def main(config):
@@ -64,6 +81,8 @@ def main(config):
     settings = config.registry.settings
     config.set_authentication_policy(OpenstaxAccountsAuthenticationPolicy(
         client=config.registry.getUtility(IOpenstaxAccounts, 'authentication'),
+        application_url=settings['openstax_accounts.application_url'],
         login_path=settings['openstax_accounts.login_path'],
         callback_path=settings['openstax_accounts.callback_path'],
+        logout_path=settings['openstax_accounts.logout_path'],
         ))

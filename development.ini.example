@@ -7,6 +7,7 @@ openstax_accounts.application_secret = 226af66711708a044620199daf68a95a201e893c9
 openstax_accounts.application_url = http://localhost:8000/
 openstax_accounts.login_path = /login
 openstax_accounts.callback_path = /callback
+openstax_accounts.logout_path = /logout
 
 [server:main]
 use = egg:waitress#main

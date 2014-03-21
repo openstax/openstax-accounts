@@ -23,7 +23,7 @@ def screenshot_on_error(method):
         except:
             self.driver.get_screenshot_as_file('error.png')
             with open('error.html', 'w') as f:
-                f.write(self.driver.page_source)
+                f.write(self.driver.page_source.encode('utf-8'))
             raise
     return wrapper
 
@@ -117,8 +117,6 @@ class FunctionalTests(unittest.TestCase):
     @screenshot_on_error
     def test_local(self):
         self._test_signup()
-        self.tearDown()
-        self.setUp()
         self._test_login()
 
     def _test_signup(self):

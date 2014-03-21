@@ -8,6 +8,7 @@ setup(
         author='Karen Chan',
         author_email='karen@karen-chan.com',
         url='http://github.com/karenc/openstax-accounts',
+        license='LGPL',
         packages=['openstax_accounts'],
         install_requires=(
             'PasteDeploy',

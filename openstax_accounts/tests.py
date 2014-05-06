@@ -125,7 +125,7 @@ class FunctionalTests(unittest.TestCase):
         self.assertTrue('You are currently not logged in' in self.driver.page_source)
         self.follow_link('Log in')
         # redirected to openstax accounts
-        self.follow_link('Sign Up')
+        self.follow_link('Sign up')
         # fill out sign up form
         self.username = self.generate_username()
         self.fill_in('Username', self.username)
@@ -133,8 +133,8 @@ class FunctionalTests(unittest.TestCase):
         self.fill_in('Password Again', 'password')
         self.driver.find_element_by_name('commit').click()
         # signed in to openstax accounts
-        self.assertTrue('Great, you are signed in' in self.page_text())
-        self.follow_link('I have not made', exact=False)
+        self.assertTrue('Nice to meet you' in self.page_text())
+        self.follow_link('Finish setting up my account')
         # profile form
         if 'Complete your profile' in self.page_text():
             self.driver.find_element_by_id('register_i_agree').click()
@@ -186,8 +186,8 @@ class FunctionalTests(unittest.TestCase):
         if confirm:
             confirm[0].click()
         # redirected back to openstax accounts
-        if 'Great, you are signed in' in self.page_text():
-            self.follow_link('I have not made', exact=False)
+        if 'Nice to meet you' in self.page_text():
+            self.follow_link('Finish setting up my account')
         # profile form
         if 'Complete your profile' in self.page_text():
             self.driver.find_element_by_id('register_i_agree').click()
@@ -219,8 +219,8 @@ class FunctionalTests(unittest.TestCase):
         password.send_keys(twitter['password'])
         self.driver.find_element_by_id('allow').click()
         # redirected back to openstax accounts
-        if 'Great, you are signed in' in self.page_text():
-            self.follow_link('I have not made', exact=False)
+        if 'Nice to meet you' in self.page_text():
+            self.follow_link('Finish setting up my account')
         # profile form
         if 'Complete your profile' in self.page_text():
             self.driver.find_element_by_id('register_i_agree').click()
@@ -252,8 +252,8 @@ class FunctionalTests(unittest.TestCase):
         password.send_keys(google['password'])
         self.driver.find_element_by_id('signIn').click()
         # redirected back to openstax accounts
-        if 'Great, you are signed in' in self.page_text():
-            self.follow_link('I have not made', exact=False)
+        if 'Nice to meet you' in self.page_text():
+            self.follow_link('Finish setting up my account')
         # profile form
         if 'Complete your profile' in self.page_text():
             self.driver.find_element_by_id('register_i_agree').click()

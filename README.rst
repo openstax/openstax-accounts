@@ -32,6 +32,6 @@ TESTS
 
 4. Add chrome driver to $PATH: ``export PATH=$PATH:.``
 
-5. Make sure the $DISPLAY is set: ``export DISPLAY=:0``
+5. Make sure the $DISPLAY is set, for example: ``export DISPLAY=:0`` or install ``xvfb``
 
-6. ``./bin/python setup.py test``
+6. ``./bin/python setup.py test`` or ``xvfb-run ./bin/python setup.py test``

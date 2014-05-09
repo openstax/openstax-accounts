@@ -12,6 +12,7 @@ except ImportError:
 from pyramid.httpexceptions import HTTPFound
 from pyramid.interfaces import IAuthenticationPolicy
 from pyramid.security import Everyone, Authenticated
+from pyramid.threadlocal import get_current_registry
 from zope.interface import implementer
 
 from .interfaces import *
@@ -26,54 +27,44 @@ def get_user_from_session(request):
 @implementer(IAuthenticationPolicy)
 class OpenstaxAccountsAuthenticationPolicy(object):
 
-    def __init__(self, client, application_url, login_path, callback_path,
-            logout_path):
-        self.client = client
-        self.application_url = application_url
-        self.login_path = login_path
-        self.callback_path = callback_path
-        self.logout_path = logout_path
-
-    def _login(self, request):
-        raise HTTPFound(location=self.client.auth_uri())
-
-    def _callback(self, request):
-        code = request.params['code']
-        self.client.request_token_with_code(code)
+    @property
+    def client(self):
+        if hasattr(self, '_client'):
+            return self._client
+        registry = get_current_registry()
+        self._client = registry.getUtility(IOpenstaxAccounts)
+        return self._client
 
     def authenticated_userid(self, request):
-        if request.path == self.login_path:
-            return self._login(request)
-        if request.path == self.callback_path:
-            self._callback(request)
-            me = self.client.request('/api/users/me.json')
-            request.session.update({
-                'profile': me,
-                'username': me.get('username'),
-                })
-            request.session.changed()
-            return me.get('username')
-        return self.unauthenticated_userid(request)
+        me = self.client.request('/api/users/me.json')
+        request.session.update({
+            'profile': me,
+            'username': me.get('username'),
+            })
+        request.session.changed()
+        return me.get('username')
 
     def unauthenticated_userid(self, request):
         return request.session.get('username')
 
     def effective_principals(self, request):
-        groups = [Everyone]
+        principals = [Everyone]
         if self.authenticated_userid(request):
-            groups.append(Authenticated)
-        return groups
+            principals.append(Authenticated)
+        return principals
 
     def remember(self, request, principal, **kw):
-        pass
+        """Remember the principal in OAuth token
+        (given as keyword argument ``code``).
+        The ``profile`` can optionally be given as well.
+        """
+        self.client.request_token_with_code(kw['code'])
+        request.session.set('username', principal)
+        if 'profile' in kw:
+            request.session.set('profile')
 
     def forget(self, request):
-        if self.unauthenticated_userid(request):
-            logout_url = urlparse.urljoin(self.client.server_url, '/logout')
-            return_to = urlparse.urljoin(self.application_url, self.logout_path)
-            params = urlencode({'return_to': return_to})
-            request.session.clear()
-            raise HTTPFound(location='?'.join([logout_url, params]))
+        request.session.clear()
 
 
 def main(config):

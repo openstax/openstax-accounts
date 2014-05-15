@@ -60,8 +60,10 @@ class OpenstaxAccountsAuthenticationPolicy(object):
 
     def effective_principals(self, request):
         groups = [Everyone]
-        if self.authenticated_userid(request):
+        userid = self.authenticated_userid(request)
+        if userid:
             groups.append(Authenticated)
+            groups.append(userid)
         return groups
 
     def remember(self, request, principal, **kw):

@@ -1,29 +1,26 @@
 # -*- coding: utf-8 -*-
 
+import functools
 import uuid
 
 from pyramid.authorization import ACLAuthorizationPolicy
 from pyramid.config import Configurator
-from pyramid.httpexceptions import HTTPFound
+from pyramid.httpexceptions import HTTPFound, HTTPUnauthorized
 from pyramid.response import Response
-from pyramid.security import (Allow, Everyone,
-        Authenticated, forget)
+from pyramid.security import Authenticated, forget
 from pyramid.session import UnencryptedCookieSessionFactoryConfig
 from pyramid.url import route_url
 from pyramid.view import view_config
 
 from .interfaces import *
 
-class Site(object):
-    __name__ = ''
-    __parent__ = None
-    __acl__ = [
-            (Allow, Authenticated, 'protected'),
-            (Allow, Everyone, 'view'),
-            ]
-
-    def __init__(self, request):
-        self.request = request
+def authenticated_only(function):
+    @functools.wraps(function)
+    def wrapper(request, *args, **kwargs):
+        if Authenticated not in request.effective_principals:
+            raise HTTPUnauthorized()
+        return function(request, *args, **kwargs)
+    return wrapper
 
 def menu(request):
     user = request.user
@@ -55,11 +52,12 @@ def menu(request):
 def index(request):
     return Response(menu(request))
 
-@view_config(route_name='hello-world', context=Site, permission='view')
+@view_config(route_name='hello-world')
 def hello_world(request):
     return Response(menu(request) + '<p>Hello world!</p>')
 
-@view_config(route_name='profile', context=Site, permission='protected')
+@view_config(route_name='profile')
+@authenticated_only
 def profile(request):
     user = request.user
     profile = '<ul>' + ''.join([
@@ -67,20 +65,21 @@ def profile(request):
         for k, v in user.items()]) + '</ul>'
     return Response(menu(request) + '<p>Profile</p>' + profile)
 
-@view_config(route_name='user-search', context=Site)
+@view_config(route_name='user-search')
+@authenticated_only
 def user_search(request):
-    users = request.registry.getUtility(IOpenstaxAccounts).request('/api/users/search.json?q=*')
+    users = request.registry.getUtility(IOpenstaxAccounts).request('/api/application_users.json?q=*')
     return Response(menu(request) + '<p>User Search</p>{}'.format(users))
 
-@view_config(route_name='callback', context=Site, permission='protected')
+@view_config(route_name='callback')
+@authenticated_only
 def callback(request):
-    # callback must be protected, so that effective_principals is called
     # callback must redirect
     return HTTPFound(location='/')
 
-@view_config(route_name='login', context=Site, permission='protected')
+@view_config(route_name='login')
+@authenticated_only
 def login(request):
-    # login must be protected, so that effective_principals is called
     pass
 
 @view_config(route_name='logout')
@@ -92,7 +91,7 @@ def main(global_config, **settings):
     session_factory = UnencryptedCookieSessionFactoryConfig(
             str(uuid.uuid4()))
 
-    config = Configurator(settings=settings, root_factory=Site,
+    config = Configurator(settings=settings,
                           session_factory=session_factory)
     config.add_route('index', '/')
     config.add_route('hello-world', '/hello-world')

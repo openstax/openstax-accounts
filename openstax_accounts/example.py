@@ -100,11 +100,9 @@ def main(global_config, **settings):
     config.add_route('callback', '/callback')
     config.add_route('login', '/login')
     config.add_route('logout', '/logout')
-    config.scan(ignore='openstax_accounts.tests')
 
-    # use the openstax accounts authentication policy
-    config.include('openstax_accounts.openstax_accounts.main')
-    config.include('openstax_accounts.authentication_policy.main')
+    config.scan(package='openstax_accounts.example')
+    config.include('openstax_accounts.main')
 
     # authorization policy must be set if an authentication policy is set
     config.set_authorization_policy(ACLAuthorizationPolicy())

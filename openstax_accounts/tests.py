@@ -24,6 +24,7 @@ def screenshot_on_error(method):
             self.driver.get_screenshot_as_file('error.png')
             with open('error.html', 'w') as f:
                 f.write(self.driver.page_source.encode('utf-8'))
+            print(self.driver.page_source)
             raise
     return wrapper
 
@@ -105,6 +106,7 @@ class FunctionalTests(unittest.TestCase):
             self.driver.find_element_by_link_text(link_text).click()
         else:
             self.driver.find_element_by_partial_link_text(link_text).click()
+        import time; time.sleep(5)
 
     def generate_username(self, prefix='user'):
         length = 5
@@ -113,6 +115,44 @@ class FunctionalTests(unittest.TestCase):
 
     def page_text(self):
         return re.sub('<[^>]*>', '', self.driver.page_source)
+
+    @screenshot_on_error
+    def test_stub(self):
+        # check that we are not logged in
+        self.driver.get(self.app_url)
+        self.assertTrue('You are currently not logged in' in self.driver.page_source)
+        self.follow_link('Log in')
+        # stub login form
+        self.fill_in('Username:', 'test')
+        self.fill_in('Password:', 'password')
+        self.driver.find_element_by_xpath('//input[@type="submit"]').click()
+        self.assertTrue('Username or password incorrect' in self.page_text())
+
+        self.fill_in('Username:', 'aaron')
+        self.fill_in('Password:', 'password')
+        self.driver.find_element_by_xpath('//input[@type="submit"]').click()
+        self.assertTrue('You are currently logged in.' in self.page_text())
+        # check profile data
+        self.follow_link('Profile')
+        self.assertTrue('username: aaron' in self.page_text())
+        self.assertTrue('last_name: Andersen' in self.page_text())
+        # logout
+        self.follow_link('Log out')
+        self.assertTrue('You are currently not logged in' in self.page_text())
+
+        # login as someone else
+        self.follow_link('Log in')
+        self.fill_in('Username:', 'babara')
+        self.fill_in('Password:', 'password')
+        self.driver.find_element_by_xpath('//input[@type="submit"]').click()
+        self.assertTrue('You are currently logged in.' in self.page_text())
+        # check profile data
+        self.follow_link('Profile')
+        self.assertTrue('username: babara' in self.page_text())
+        self.assertTrue('babara@example.com' in self.page_text())
+        # logout
+        self.follow_link('Log out')
+        self.assertTrue('You are currently not logged in' in self.page_text())
 
     @screenshot_on_error
     def test_local(self):

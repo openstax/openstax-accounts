@@ -1,0 +1,19 @@
+language: python
+python:
+  - "2.7"
+before_install:
+  - sudo apt-get update
+
+  # Install xvfb
+  - sudo apt-get install --yes xvfb
+
+  # Install firefox
+  - sudo apt-get install --yes firefox
+
+install:
+  - python setup.py install
+env: DRIVER='Firefox'
+script:
+  - TESTING_INI=test_stub.ini xvfb-run python setup.py test -s openstax_accounts.tests.FunctionalTests.test_stub
+notifications:
+  email: false

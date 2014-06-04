@@ -46,7 +46,7 @@ class OpenstaxAccountsAuthenticationPolicy(object):
             return self._login(request)
         if request.path == self.callback_path:
             self._callback(request)
-            me = self.client.request('/api/users/me.json')
+            me = self.client.request('/api/user.json')
             request.session.update({
                 'profile': me,
                 'username': me.get('username'),

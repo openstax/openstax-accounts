@@ -6,6 +6,7 @@ import functools
 import os
 import random
 import subprocess
+import time
 import re
 import unittest
 try:
@@ -58,10 +59,10 @@ class FunctionalTests(unittest.TestCase):
             pserve = 'pserve'
         cls.server = subprocess.Popen([pserve, cls.testing_ini])
 
-        import time
         time.sleep(5)
 
     @classmethod
+    @screenshot_on_error
     def set_up_accounts(cls):
         driver = os.getenv('DRIVER', 'Chrome')
         cls.driver = getattr(webdriver, driver)()
@@ -76,7 +77,7 @@ class FunctionalTests(unittest.TestCase):
         cls.class_fill_in('Username', admin_login)
         cls.class_fill_in('Password', admin_password)
         cls.driver.find_element_by_xpath('//button[text()="Sign in"]').click()
-        import time; time.sleep(5)
+        time.sleep(5)
 
         # register our app with openstax/accounts
         cls.driver.get(urlparse.urljoin(cls.accounts_url, '/oauth/applications'))
@@ -85,7 +86,7 @@ class FunctionalTests(unittest.TestCase):
         cls.class_fill_in('Redirect uri', urlparse.urljoin(cls.app_url, '/callback'))
         cls.driver.find_element_by_id('application_trusted').click()
         cls.driver.find_element_by_name('commit').click()
-        import time; time.sleep(5)
+        time.sleep(5)
         application_id = cls.driver.find_element_by_id('application_id').text
         application_secret = cls.driver.find_element_by_id('secret').text
         cls.driver.quit()
@@ -103,8 +104,15 @@ class FunctionalTests(unittest.TestCase):
         cls.server.terminate()
 
     def fill_in(self, label_text, value):
-        label = self.driver.find_element_by_xpath('//label[text()="{}"]'
-                .format(label_text))
+        for i in range(10):
+            # try this 10 times to minimize false negative results...
+            try:
+                label = self.driver.find_element_by_xpath('//label[text()="{}"]'
+                        .format(label_text))
+                break
+            except:
+                time.sleep(5)
+
         input_id = label.get_attribute('for')
         field = self.driver.find_element_by_id(input_id)
         field.send_keys(value)
@@ -123,7 +131,7 @@ class FunctionalTests(unittest.TestCase):
             self.driver.find_element_by_link_text(link_text).click()
         else:
             self.driver.find_element_by_partial_link_text(link_text).click()
-        import time; time.sleep(5)
+        time.sleep(5)
 
     def generate_username(self, prefix='user'):
         length = 5
@@ -196,6 +204,7 @@ class FunctionalTests(unittest.TestCase):
         if 'Complete your profile' in self.page_text():
             self.driver.find_element_by_id('register_i_agree').click()
             self.driver.find_element_by_id('register_submit').click()
+        time.sleep(5)
         # redirected back to app
         self.assertTrue('You are currently logged in.' in self.page_text())
         # check profile data
@@ -215,6 +224,7 @@ class FunctionalTests(unittest.TestCase):
         self.fill_in('Username', self.username)
         self.fill_in('Password', 'password')
         self.driver.find_element_by_xpath('//button[text()="Sign in"]').click()
+        time.sleep(5)
         # redirected back to app
         self.assertTrue('You are currently logged in.' in self.page_text())
         # check profile data

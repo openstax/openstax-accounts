@@ -13,6 +13,7 @@ try:
 except ImportError:
     import urllib.parse as urlparse # renamed in python3
 
+from pyramid.settings import asbool
 from selenium import webdriver
 
 def screenshot_on_error(method):
@@ -24,6 +25,7 @@ def screenshot_on_error(method):
             self.driver.get_screenshot_as_file('error.png')
             with open('error.html', 'w') as f:
                 f.write(self.driver.page_source.encode('utf-8'))
+            print(self.driver.page_source)
             raise
     return wrapper
 
@@ -38,14 +40,32 @@ def log(method):
 class FunctionalTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.driver = webdriver.Chrome()
-
         cls.testing_ini = os.getenv('TESTING_INI', 'testing.ini')
 
-        cls.config = ConfigParser.ConfigParser()
+        cls.config = ConfigParser.ConfigParser({
+            'openstax_accounts.stub': 'false',
+            })
         cls.config.read([cls.testing_ini])
-
         cls.app_url = cls.config.get('app:main', 'openstax_accounts.application_url')
+
+        if not asbool(cls.config.get('app:main', 'openstax_accounts.stub')):
+            cls.set_up_accounts()
+
+        # start server
+        if os.path.exists('./bin/pserve'):
+            pserve = './bin/pserve'
+        else:
+            pserve = 'pserve'
+        cls.server = subprocess.Popen([pserve, cls.testing_ini])
+
+        import time
+        time.sleep(5)
+
+    @classmethod
+    def set_up_accounts(cls):
+        driver = os.getenv('DRIVER', 'Chrome')
+        cls.driver = getattr(webdriver, driver)()
+
         cls.accounts_url = cls.config.get('app:main', 'openstax_accounts.server_url')
 
         admin_login = cls.config.get('app:main', 'openstax_accounts.admin_login')
@@ -56,6 +76,8 @@ class FunctionalTests(unittest.TestCase):
         cls.class_fill_in('Username', admin_login)
         cls.class_fill_in('Password', admin_password)
         cls.driver.find_element_by_xpath('//button[text()="Sign in"]').click()
+        import time; time.sleep(5)
+
         # register our app with openstax/accounts
         cls.driver.get(urlparse.urljoin(cls.accounts_url, '/oauth/applications'))
         cls.driver.find_element_by_link_text('New Application').click()
@@ -63,6 +85,7 @@ class FunctionalTests(unittest.TestCase):
         cls.class_fill_in('Redirect uri', urlparse.urljoin(cls.app_url, '/callback'))
         cls.driver.find_element_by_id('application_trusted').click()
         cls.driver.find_element_by_name('commit').click()
+        import time; time.sleep(5)
         application_id = cls.driver.find_element_by_id('application_id').text
         application_secret = cls.driver.find_element_by_id('secret').text
         cls.driver.quit()
@@ -74,12 +97,6 @@ class FunctionalTests(unittest.TestCase):
 
         with open(cls.testing_ini, 'w') as f:
             cls.config.write(f)
-
-        # start server
-        cls.server = subprocess.Popen(['./bin/pserve', cls.testing_ini])
-
-        import time
-        time.sleep(3)
 
     @classmethod
     def tearDownClass(cls):
@@ -95,7 +112,8 @@ class FunctionalTests(unittest.TestCase):
     class_fill_in = classmethod(fill_in)
 
     def setUp(self):
-        self.driver = webdriver.Chrome()
+        driver = os.getenv('DRIVER', 'Chrome')
+        self.driver = getattr(webdriver, driver)()
 
     def tearDown(self):
         self.driver.quit()
@@ -105,6 +123,7 @@ class FunctionalTests(unittest.TestCase):
             self.driver.find_element_by_link_text(link_text).click()
         else:
             self.driver.find_element_by_partial_link_text(link_text).click()
+        import time; time.sleep(5)
 
     def generate_username(self, prefix='user'):
         length = 5
@@ -113,6 +132,44 @@ class FunctionalTests(unittest.TestCase):
 
     def page_text(self):
         return re.sub('<[^>]*>', '', self.driver.page_source)
+
+    @screenshot_on_error
+    def test_stub(self):
+        # check that we are not logged in
+        self.driver.get(self.app_url)
+        self.assertTrue('You are currently not logged in' in self.driver.page_source)
+        self.follow_link('Log in')
+        # stub login form
+        self.fill_in('Username:', 'test')
+        self.fill_in('Password:', 'password')
+        self.driver.find_element_by_xpath('//input[@type="submit"]').click()
+        self.assertTrue('Username or password incorrect' in self.page_text())
+
+        self.fill_in('Username:', 'aaron')
+        self.fill_in('Password:', 'password')
+        self.driver.find_element_by_xpath('//input[@type="submit"]').click()
+        self.assertTrue('You are currently logged in.' in self.page_text())
+        # check profile data
+        self.follow_link('Profile')
+        self.assertTrue('username: aaron' in self.page_text())
+        self.assertTrue('last_name: Andersen' in self.page_text())
+        # logout
+        self.follow_link('Log out')
+        self.assertTrue('You are currently not logged in' in self.page_text())
+
+        # login as someone else
+        self.follow_link('Log in')
+        self.fill_in('Username:', 'babara')
+        self.fill_in('Password:', 'password')
+        self.driver.find_element_by_xpath('//input[@type="submit"]').click()
+        self.assertTrue('You are currently logged in.' in self.page_text())
+        # check profile data
+        self.follow_link('Profile')
+        self.assertTrue('username: babara' in self.page_text())
+        self.assertTrue('babara@example.com' in self.page_text())
+        # logout
+        self.follow_link('Log out')
+        self.assertTrue('You are currently not logged in' in self.page_text())
 
     @screenshot_on_error
     def test_local(self):

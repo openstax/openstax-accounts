@@ -112,6 +112,8 @@ class FunctionalTests(unittest.TestCase):
                 break
             except:
                 time.sleep(5)
+                if i == 9:
+                    raise
 
         input_id = label.get_attribute('for')
         field = self.driver.find_element_by_id(input_id)
@@ -252,6 +254,7 @@ class FunctionalTests(unittest.TestCase):
         confirm = self.driver.find_elements_by_name('__CONFIRM__')
         if confirm:
             confirm[0].click()
+            time.sleep(5)
         # redirected back to openstax accounts
         if 'Nice to meet you' in self.page_text():
             self.follow_link('Finish setting up my account')
@@ -285,6 +288,7 @@ class FunctionalTests(unittest.TestCase):
         password = self.driver.find_element_by_id('password')
         password.send_keys(twitter['password'])
         self.driver.find_element_by_id('allow').click()
+        time.sleep(5)
         # redirected back to openstax accounts
         if 'Nice to meet you' in self.page_text():
             self.follow_link('Finish setting up my account')
@@ -318,6 +322,7 @@ class FunctionalTests(unittest.TestCase):
         password = self.driver.find_element_by_id('Passwd')
         password.send_keys(google['password'])
         self.driver.find_element_by_id('signIn').click()
+        time.sleep(5)
         # redirected back to openstax accounts
         if 'Nice to meet you' in self.page_text():
             self.follow_link('Finish setting up my account')

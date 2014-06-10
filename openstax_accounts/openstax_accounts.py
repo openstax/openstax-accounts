@@ -69,5 +69,5 @@ def main(config):
     openstax_accounts.request_application_token()
     config.registry.registerUtility(openstax_accounts, IOpenstaxAccounts)
 
-    config.registry.registerUtility(OpenstaxAccounts(*args), IOpenstaxAccounts,
-            'authentication')
+    config.registry.registerUtility(OpenstaxAccounts, IOpenstaxAccounts,
+            name='factory')

@@ -4,6 +4,19 @@ python:
 before_install:
   - sudo apt-get update
 
+  # Install openstax/accounts
+  - git clone https://github.com/openstax/accounts
+  - cd accounts
+  - bundle install --without production
+  # Add admin user
+  - "echo \"user = FactoryGirl.create :user, :admin, :terms_agreed, username: 'admin'\" >>db/seeds.rb"
+  - "echo \"identity = FactoryGirl.create :identity, user: user, password: 'password'\" >>db/seeds.rb"
+  - "echo \"FactoryGirl.create :authentication, provider: 'identity', uid: identity.id.to_s, user: user\" >>db/seeds.rb"
+  - bundle exec rake db:setup
+  # Run openstax/accounts in the background
+  - bundle exec thin start -p 3000 --ssl --ssl-verify --ssl-key-file ../test_server.key --ssl-cert-file ../test_server.crt &
+  - cd ..
+
   # Install xvfb
   - sudo apt-get install --yes xvfb
 
@@ -15,5 +28,6 @@ install:
 env: DRIVER='Firefox'
 script:
   - TESTING_INI=test_stub.ini xvfb-run python setup.py test -s openstax_accounts.tests.FunctionalTests.test_stub
+  - TESTING_INI=test_local.ini xvfb-run python setup.py test -s openstax_accounts.tests.FunctionalTests.test_local
 notifications:
   email: false

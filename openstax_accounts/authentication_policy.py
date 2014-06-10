@@ -26,27 +26,27 @@ def get_user_from_session(request):
 @implementer(IAuthenticationPolicy)
 class OpenstaxAccountsAuthenticationPolicy(object):
 
-    def __init__(self, client, application_url, login_path, callback_path,
-            logout_path):
-        self.client = client
+    def __init__(self, client_factory, client_args, application_url,
+            login_path, callback_path, logout_path):
+        self.client_factory = client_factory
+        self.client_args = client_args
         self.application_url = application_url
         self.login_path = login_path
         self.callback_path = callback_path
         self.logout_path = logout_path
 
     def _login(self, request):
-        raise HTTPFound(location=self.client.auth_uri())
-
-    def _callback(self, request):
-        code = request.params['code']
-        self.client.request_token_with_code(code)
+        client = self.client_factory(*self.client_args)
+        raise HTTPFound(location=client.auth_uri())
 
     def authenticated_userid(self, request):
         if request.path == self.login_path:
             return self._login(request)
         if request.path == self.callback_path:
-            self._callback(request)
-            me = self.client.request('/api/users/me.json')
+            code = request.params['code']
+            client = self.client_factory(*self.client_args)
+            client.request_token_with_code(code)
+            me = client.request('/api/user.json')
             request.session.update({
                 'profile': me,
                 'username': me.get('username'),
@@ -71,7 +71,8 @@ class OpenstaxAccountsAuthenticationPolicy(object):
 
     def forget(self, request):
         if self.unauthenticated_userid(request):
-            logout_url = urlparse.urljoin(self.client.server_url, '/logout')
+            client = self.client_factory(*self.client_args)
+            logout_url = urlparse.urljoin(client.server_url, '/logout')
             return_to = urlparse.urljoin(self.application_url, self.logout_path)
             params = urlencode({'return_to': return_to})
             request.session.clear()
@@ -82,7 +83,11 @@ def main(config):
     config.add_request_method(get_user_from_session, 'user', reify=True)
     settings = config.registry.settings
     config.set_authentication_policy(OpenstaxAccountsAuthenticationPolicy(
-        client=config.registry.getUtility(IOpenstaxAccounts, 'authentication'),
+        client_factory=config.registry.getUtility(IOpenstaxAccounts, 'factory'),
+        client_args=(settings['openstax_accounts.server_url'],
+                     settings['openstax_accounts.application_id'],
+                     settings['openstax_accounts.application_secret'],
+                     settings['openstax_accounts.application_url']),
         application_url=settings['openstax_accounts.application_url'],
         login_path=settings['openstax_accounts.login_path'],
         callback_path=settings['openstax_accounts.callback_path'],

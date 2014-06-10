@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import functools
+import json
 import uuid
 
 from pyramid.authorization import ACLAuthorizationPolicy
@@ -38,6 +39,7 @@ def menu(request):
     <li><a href="{hello_world_path}">Hello World!</a></li>
     <li><a href="{profile_path}">Profile</a></li>
     <li><a href="{user_search_path}">User Search</a></li>
+    <li><a href="{user_search_json_path}">User Search (JSON)</a></li>
     <li><a href="{login_logout_path}">{login_logout_text}</a></li>
 </ul>'''.format(
         login_status=login_status,
@@ -45,7 +47,8 @@ def menu(request):
         login_logout_path=login_logout_path,
         login_logout_text=login_logout_text,
         profile_path=request.route_url('profile'),
-        user_search_path=request.route_url('user-search'),
+        user_search_path=request.route_url('user-search', format=''),
+        user_search_json_path=request.route_url('user-search', format='.json'),
         )
 
 @view_config(route_name='index')
@@ -68,7 +71,10 @@ def profile(request):
 @view_config(route_name='user-search')
 @authenticated_only
 def user_search(request):
-    users = request.registry.getUtility(IOpenstaxAccounts).request('/api/application_users.json?q=*')
+    util = request.registry.getUtility(IOpenstaxAccounts)
+    users = util.search('*')
+    if request.matchdict.get('format') == '.json':
+        return Response(json.dumps(users), content_type='application/json')
     return Response(menu(request) + '<p>User Search</p>{}'.format(users))
 
 @view_config(route_name='callback')
@@ -96,7 +102,7 @@ def main(global_config, **settings):
     config.add_route('index', '/')
     config.add_route('hello-world', '/hello-world')
     config.add_route('profile', '/profile')
-    config.add_route('user-search', '/users/search')
+    config.add_route('user-search', '/users/search{format:(.json)?}')
     config.add_route('callback', '/callback')
     config.add_route('login', '/login')
     config.add_route('logout', '/logout')

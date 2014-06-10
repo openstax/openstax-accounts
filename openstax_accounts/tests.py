@@ -3,6 +3,7 @@ try:
 except ImportError:
     import configparser as ConfigParser # renamed in python3
 import functools
+import json
 import os
 import random
 import subprocess
@@ -185,6 +186,7 @@ class FunctionalTests(unittest.TestCase):
     def test_local(self):
         self._test_signup()
         self._test_login()
+        self._test_search()
 
     def _test_signup(self):
         # check that we are not logged in
@@ -234,6 +236,36 @@ class FunctionalTests(unittest.TestCase):
         self.assertTrue('username: {}'.format(self.username) in self.page_text())
         self.assertTrue('id: ' in self.page_text())
         # logout
+        self.follow_link('Log out')
+        self.assertTrue('You are currently not logged in' in self.page_text())
+
+    def _test_search(self):
+        # login
+        self.driver.get(self.app_url)
+        self.follow_link('Log in')
+        # redirected to openstax accounts
+        self.fill_in('Username', self.username)
+        self.fill_in('Password', 'password')
+        self.driver.find_element_by_xpath('//button[text()="Sign in"]').click()
+        time.sleep(5)
+        # redirected back to app
+        self.assertTrue('You are currently logged in.' in self.page_text())
+        self.follow_link('User Search (JSON)')
+        for i in range(10):
+            try:
+                users = json.loads(self.page_text())
+                break
+            except:
+                if i == 9:
+                    raise
+        self.assertEqual(users['page'], 0)
+        self.assertEqual(users['num_matching_users'], 1)
+        self.assertEqual(len(users['application_users']), 1)
+        self.assertEqual(users['application_users'][0]['user']['username'],
+                         self.username)
+
+        # logout
+        self.driver.get(self.app_url)
         self.follow_link('Log out')
         self.assertTrue('You are currently not logged in' in self.page_text())
 

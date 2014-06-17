@@ -180,6 +180,36 @@ class FunctionalTests(unittest.TestCase):
         self.follow_link('Profile')
         self.assertTrue('username: babara' in self.page_text())
         self.assertTrue('babara@example.com' in self.page_text())
+        # check user search api
+        self.follow_link('User Search (JSON)')
+        users = json.loads(self.page_text())
+        self.assertEqual(users['page'], 0)
+        self.assertEqual(users['num_matching_users'], 6)
+        self.assertEqual(users['users'], [
+            {'username': 'aaron', 'id': 1},
+            {'username': 'babara', 'id': 2},
+            {'username': 'caitlin', 'id': 3},
+            {'username': 'dale', 'id': 4},
+            {'username': 'earl', 'id': 5},
+            {'username': 'fabian', 'id': 6},
+            ])
+        # check messaging api
+        self.driver.get(self.app_url)
+        self.follow_link('Send Message')
+        self.fill_in('Username:', 'earl')
+        self.fill_in('Subject:', 'Test')
+        self.fill_in('Body:', 'Message!')
+        self.driver.find_elements_by_xpath('//input')[-1].click()
+        time.sleep(5)
+        self.assertTrue('Message sent' in self.page_text())
+        # check messages.txt
+        with open('messages.txt', 'r') as f:
+            messages = f.read()
+        self.assertTrue('''Subject: [subject prefix] Test
+From: openstax-accounts@localhost
+To: earl <earl@example.com>
+
+Message!''' in messages)
         # logout
         self.follow_link('Log out')
         self.assertTrue('You are currently not logged in' in self.page_text())

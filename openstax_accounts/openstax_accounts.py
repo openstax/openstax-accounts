@@ -1,7 +1,12 @@
 # -*- coding: utf-8 -*-
 
+import cgi
 import json
 import urllib
+try:
+    from urllib import urlencode
+except ImportError:
+    from urllib.parse import urlencode # python3
 try:
     import urlparse # python2
 except ImportError:
@@ -19,6 +24,10 @@ def parser_remove_null_expires_in(data):
     if data.get('expires_in', '') is None:
         data.pop('expires_in')
     return data
+
+class UserNotFoundException(Exception):
+    pass
+
 
 @implementer(IOpenstaxAccounts)
 class OpenstaxAccounts(object):
@@ -58,6 +67,24 @@ class OpenstaxAccounts(object):
     def search(self, query):
         return self.request('/api/application_users.json?{}'.format(
             urlencode({'q': query})))
+
+    def send_message(self, username, subject, body):
+        users = self.search('username:{}'.format(username))
+        userid = None
+        for user in users['users']:
+            if user['username'] == username:
+                userid = user['id']
+        if userid is None:
+            raise UserNotFoundException('User "{}" not found'.format(username))
+
+        self.request('/api/messages.json', data=urlencode({
+                     'user_id': int(userid),
+                     'to[user_ids][]': [int(userid)],
+                     'subject': subject,
+                     'body[text]': body,
+                     'body[html]': '<html><body>{}</body></html>'.format(
+                         cgi.escape(body)),
+                     }, True))
 
 
 def main(config):

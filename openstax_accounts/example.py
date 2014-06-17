@@ -40,6 +40,7 @@ def menu(request):
     <li><a href="{profile_path}">Profile</a></li>
     <li><a href="{user_search_path}">User Search</a></li>
     <li><a href="{user_search_json_path}">User Search (JSON)</a></li>
+    <li><a href="{send_message_path}">Send Message</a></li>
     <li><a href="{login_logout_path}">{login_logout_text}</a></li>
 </ul>'''.format(
         login_status=login_status,
@@ -49,6 +50,7 @@ def menu(request):
         profile_path=request.route_url('profile'),
         user_search_path=request.route_url('user-search', format=''),
         user_search_json_path=request.route_url('user-search', format='.json'),
+        send_message_path=request.route_url('send-message'),
         )
 
 @view_config(route_name='index')
@@ -77,6 +79,29 @@ def user_search(request):
         return Response(json.dumps(users), content_type='application/json')
     return Response(menu(request) + '<p>User Search</p>{}'.format(users))
 
+@view_config(route_name='send-message')
+@authenticated_only
+def send_message(request):
+    if request.method == 'GET':
+        return Response(menu(request) + '''\
+                <p>Send a message</p>
+                <form method="post" action="">
+                    <label for="username">Username:</label>
+                    <input id="username" name="username" />
+                    <label for="subject">Subject:</label>
+                    <input id="subject" name="subject" />
+                    <label for="body">Body:</label>
+                    <textarea id="body" name="body"></textarea>
+                    <input type="submit" />
+                </form>\n''')
+
+    username = request.params['username']
+    subject = request.params['subject']
+    body = request.params['body']
+    util = request.registry.getUtility(IOpenstaxAccounts)
+    util.send_message(username, subject, body)
+    return Response(menu(request) + '<p>Message sent</p>')
+
 @view_config(route_name='callback')
 @authenticated_only
 def callback(request):
@@ -103,6 +128,7 @@ def main(global_config, **settings):
     config.add_route('hello-world', '/hello-world')
     config.add_route('profile', '/profile')
     config.add_route('user-search', '/users/search{format:(.json)?}')
+    config.add_route('send-message', '/message')
     config.add_route('callback', '/callback')
     config.add_route('login', '/login')
     config.add_route('logout', '/logout')

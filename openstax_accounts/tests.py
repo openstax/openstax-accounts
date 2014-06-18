@@ -3,6 +3,7 @@ try:
 except ImportError:
     import configparser as ConfigParser # renamed in python3
 import functools
+import json
 import os
 import random
 import subprocess
@@ -84,6 +85,8 @@ class FunctionalTests(unittest.TestCase):
         cls.driver.find_element_by_link_text('New Application').click()
         cls.class_fill_in('Name', 'pyramid')
         cls.class_fill_in('Redirect uri', urlparse.urljoin(cls.app_url, '/callback'))
+        cls.class_fill_in('Email subject prefix', '[pyramid]')
+        cls.class_fill_in('Email from address', 'pyramid@e-mail-tester.appspotmail.com')
         cls.driver.find_element_by_id('application_trusted').click()
         cls.driver.find_element_by_name('commit').click()
         time.sleep(5)
@@ -112,6 +115,8 @@ class FunctionalTests(unittest.TestCase):
                 break
             except:
                 time.sleep(5)
+                if i == 9:
+                    raise
 
         input_id = label.get_attribute('for')
         field = self.driver.find_element_by_id(input_id)
@@ -175,6 +180,36 @@ class FunctionalTests(unittest.TestCase):
         self.follow_link('Profile')
         self.assertTrue('username: babara' in self.page_text())
         self.assertTrue('babara@example.com' in self.page_text())
+        # check user search api
+        self.follow_link('User Search (JSON)')
+        users = json.loads(self.page_text())
+        self.assertEqual(users['page'], 0)
+        self.assertEqual(users['num_matching_users'], 6)
+        self.assertEqual(users['users'], [
+            {'username': 'aaron', 'id': 1},
+            {'username': 'babara', 'id': 2},
+            {'username': 'caitlin', 'id': 3},
+            {'username': 'dale', 'id': 4},
+            {'username': 'earl', 'id': 5},
+            {'username': 'fabian', 'id': 6},
+            ])
+        # check messaging api
+        self.driver.get(self.app_url)
+        self.follow_link('Send Message')
+        self.fill_in('Username:', 'earl')
+        self.fill_in('Subject:', 'Test')
+        self.fill_in('Body:', 'Message!')
+        self.driver.find_elements_by_xpath('//input')[-1].click()
+        time.sleep(5)
+        self.assertTrue('Message sent' in self.page_text())
+        # check messages.txt
+        with open('messages.txt', 'r') as f:
+            messages = f.read()
+        self.assertTrue('''Subject: [subject prefix] Test
+From: openstax-accounts@localhost
+To: earl <earl@example.com>
+
+Message!''' in messages)
         # logout
         self.follow_link('Log out')
         self.assertTrue('You are currently not logged in' in self.page_text())
@@ -183,6 +218,7 @@ class FunctionalTests(unittest.TestCase):
     def test_local(self):
         self._test_signup()
         self._test_login()
+        self._test_search()
 
     def _test_signup(self):
         # check that we are not logged in
@@ -235,6 +271,36 @@ class FunctionalTests(unittest.TestCase):
         self.follow_link('Log out')
         self.assertTrue('You are currently not logged in' in self.page_text())
 
+    def _test_search(self):
+        # login
+        self.driver.get(self.app_url)
+        self.follow_link('Log in')
+        # redirected to openstax accounts
+        self.fill_in('Username', self.username)
+        self.fill_in('Password', 'password')
+        self.driver.find_element_by_xpath('//button[text()="Sign in"]').click()
+        time.sleep(5)
+        # redirected back to app
+        self.assertTrue('You are currently logged in.' in self.page_text())
+        self.follow_link('User Search (JSON)')
+        for i in range(10):
+            try:
+                users = json.loads(self.page_text())
+                break
+            except:
+                if i == 9:
+                    raise
+        self.assertEqual(users['page'], 0)
+        self.assertEqual(users['num_matching_users'], 1)
+        self.assertEqual(len(users['application_users']), 1)
+        self.assertEqual(users['application_users'][0]['user']['username'],
+                         self.username)
+
+        # logout
+        self.driver.get(self.app_url)
+        self.follow_link('Log out')
+        self.assertTrue('You are currently not logged in' in self.page_text())
+
     @screenshot_on_error
     def test_facebook(self):
         facebook = dict(self.config.items('test:facebook'))
@@ -252,6 +318,7 @@ class FunctionalTests(unittest.TestCase):
         confirm = self.driver.find_elements_by_name('__CONFIRM__')
         if confirm:
             confirm[0].click()
+            time.sleep(5)
         # redirected back to openstax accounts
         if 'Nice to meet you' in self.page_text():
             self.follow_link('Finish setting up my account')
@@ -285,6 +352,7 @@ class FunctionalTests(unittest.TestCase):
         password = self.driver.find_element_by_id('password')
         password.send_keys(twitter['password'])
         self.driver.find_element_by_id('allow').click()
+        time.sleep(5)
         # redirected back to openstax accounts
         if 'Nice to meet you' in self.page_text():
             self.follow_link('Finish setting up my account')
@@ -318,6 +386,7 @@ class FunctionalTests(unittest.TestCase):
         password = self.driver.find_element_by_id('Passwd')
         password.send_keys(google['password'])
         self.driver.find_element_by_id('signIn').click()
+        time.sleep(5)
         # redirected back to openstax accounts
         if 'Nice to meet you' in self.page_text():
             self.follow_link('Finish setting up my account')

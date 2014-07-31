@@ -7,7 +7,9 @@ before_install:
   # Install openstax/accounts
   - git clone https://github.com/openstax/accounts
   - cd accounts
-  - bundle install --without production
+  - rvm install $(cat .ruby-version)
+  - rvm use $(cat .ruby-version)
+  - travis_retry bundle install --without production
   # Add admin user
   - "echo \"user = FactoryGirl.create :user, :admin, :terms_agreed, username: 'admin'\" >>db/seeds.rb"
   - "echo \"identity = FactoryGirl.create :identity, user: user, password: 'password'\" >>db/seeds.rb"

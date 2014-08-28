@@ -208,7 +208,8 @@ def main(config):
         'openstax_accounts.stub.users'))
 
     # set authentication policy
-    config.set_authentication_policy(StubAuthenticationPolicy(users))
+    config.registry.registerUtility(StubAuthenticationPolicy(users),
+                                    IOpenstaxAccountsAuthenticationPolicy)
 
     # add stub login form
     config.add_route('stub-login-form', '/stub-login-form')

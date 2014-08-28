@@ -82,7 +82,7 @@ class OpenstaxAccountsAuthenticationPolicy(object):
 def main(config):
     config.add_request_method(get_user_from_session, 'user', reify=True)
     settings = config.registry.settings
-    config.set_authentication_policy(OpenstaxAccountsAuthenticationPolicy(
+    config.registry.registerUtility(OpenstaxAccountsAuthenticationPolicy(
         client_factory=config.registry.getUtility(IOpenstaxAccounts, 'factory'),
         client_args=(settings['openstax_accounts.server_url'],
                      settings['openstax_accounts.application_id'],
@@ -92,4 +92,4 @@ def main(config):
         login_path=settings['openstax_accounts.login_path'],
         callback_path=settings['openstax_accounts.callback_path'],
         logout_path=settings['openstax_accounts.logout_path'],
-        ))
+        ), IOpenstaxAccountsAuthenticationPolicy)

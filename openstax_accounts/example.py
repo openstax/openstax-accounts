@@ -137,5 +137,7 @@ def main(global_config, **settings):
     config.include('openstax_accounts.main')
 
     # authorization policy must be set if an authentication policy is set
+    config.set_authentication_policy(
+            config.registry.getUtility(IOpenstaxAccountsAuthenticationPolicy))
     config.set_authorization_policy(ACLAuthorizationPolicy())
     return config.make_wsgi_app()

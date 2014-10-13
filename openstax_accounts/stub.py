@@ -1,20 +1,23 @@
 # -*- coding: utf-8 -*-
 
 import copy
-from email.mime.text import MIMEText
 import fnmatch
 import json
+import logging
+from email.mime.text import MIMEText
 
 from pyramid.httpexceptions import HTTPFound
 from pyramid.interfaces import IAuthenticationPolicy
 from pyramid.response import Response
 from pyramid.security import Everyone, Authenticated
 from pyramid.settings import aslist
+from pyramid.threadlocal import get_current_registry
 from pyramid.view import view_config
-from zope.interface import implementer
+from zope.interface import implementer, Interface
 
 from .authentication_policy import get_user_from_session
 from .interfaces import *
+from .openstax_accounts import UserNotFoundException
 
 
 DEFAULT_PROFILE = {
@@ -133,6 +136,39 @@ def login_form(request):
     '''.format(error=error))
 
 
+class IStubMessageWriter(Interface):
+    """Writes sent messages to an output interface."""
+
+    def write(self, s):
+        """Writes the content ``s`` to the output."""
+
+@implementer(IStubMessageWriter)
+class LogWriter(object):
+
+    def write(self, s):
+        logger = logging.getLogger()
+        message = "Sent message:\n\n{}".format(s)
+        logger.info(message)
+
+
+@implementer(IStubMessageWriter)
+class FileWriter(object):
+
+    def write(self, s):
+        with open('messages.txt', 'a') as file:
+            file.write("{}\n\n\n".format(s))
+
+
+@implementer(IStubMessageWriter)
+class MemoryWriter(object):
+
+    def __init__(self):
+        self.messages = []
+
+    def write(self, s):
+        self.messages.append(s)
+
+
 @implementer(IOpenstaxAccounts)
 class OpenstaxAccounts(object):
     def __init__(self, users):
@@ -197,8 +233,8 @@ class OpenstaxAccounts(object):
         msg['Subject'] = '[subject prefix] {}'.format(subject)
         msg['From'] = 'openstax-accounts@localhost'
         msg['To'] = '{} <{}>'.format(username, email)
-        with open('messages.txt', 'a') as f:
-            f.write(msg.as_string() + '\n\n\n')
+        write_util = get_current_registry().getUtility(IStubMessageWriter)
+        write_util.write(msg.as_string())
 
 
 def main(config):
@@ -206,6 +242,8 @@ def main(config):
     settings = config.registry.settings
     users = get_users_from_settings(settings.get(
         'openstax_accounts.stub.users'))
+    writer_type = settings.get('openstax_accounts.stub.message_writer',
+                               'file')
 
     # set authentication policy
     config.registry.registerUtility(StubAuthenticationPolicy(users),
@@ -215,6 +253,13 @@ def main(config):
     config.add_route('stub-login-form', '/stub-login-form')
 
     # register stub openstax accounts utility
+    writer_mapping = {
+        'file': FileWriter,
+        'log': LogWriter,
+        'memory': MemoryWriter,
+        }
+    writer = writer_mapping[writer_type]()
+    config.registry.registerUtility(writer, IStubMessageWriter)
     openstax_accounts = OpenstaxAccounts(users)
     config.registry.registerUtility(openstax_accounts, IOpenstaxAccounts)
 

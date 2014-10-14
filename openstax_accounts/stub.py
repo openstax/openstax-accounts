@@ -175,6 +175,7 @@ class OpenstaxAccounts(object):
         self.users = users
 
     def search(self, query):
+        query = query.replace('%', '*')
         results = {
                 'application_users': [],
                 'order_by': 'username ASC',

@@ -65,7 +65,7 @@ class OpenstaxAccounts(object):
         return self.sanction_client.request(*args, **kwargs)
 
     def search(self, query):
-        return self.request('/api/application_users.json?{}'.format(
+        return self.request('/api/users?{}'.format(
             urlencode({'q': query})))
 
     def send_message(self, username, subject, body):

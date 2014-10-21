@@ -32,20 +32,41 @@ class UserNotFoundException(Exception):
 @implementer(IOpenstaxAccounts)
 class OpenstaxAccounts(object):
 
-    def __init__(self, server_url, application_id, application_secret,
-            application_url):
-        self.server_url = server_url
-        resource_url = server_url
-        authorize_url = urlparse.urljoin(server_url, '/oauth/authorize')
-        token_url = urlparse.urljoin(server_url, '/oauth/token')
-        self.redirect_uri = urlparse.urljoin(application_url, '/callback')
+    server_url = None
+    application_id = None
+    application_secret = None
+    application_url = None
+
+    def __init__(self, server_url=None, application_id=None,
+                 application_secret=None, application_url=None):
+        if server_url:
+            self.server_url = server_url
+        if application_id:
+            self.application_id = application_id
+        if application_secret:
+            self.application_secret = application_secret
+        if application_url:
+            self.application_url = application_url
+
+        resource_url = self.server_url
+        authorize_url = urlparse.urljoin(self.server_url, '/oauth/authorize')
+        token_url = urlparse.urljoin(self.server_url, '/oauth/token')
+        self.redirect_uri = urlparse.urljoin(self.application_url, '/callback')
 
         self.sanction_client = sanction.Client(
                 auth_endpoint=authorize_url,
                 token_endpoint=token_url,
                 resource_endpoint=resource_url,
-                client_id=application_id,
-                client_secret=application_secret)
+                client_id=self.application_id,
+                client_secret=self.application_secret)
+
+    @property
+    def access_token(self):
+        return self.sanction_client.access_token
+
+    @access_token.setter
+    def access_token(self, access_token):
+        self.sanction_client.access_token = access_token
 
     def auth_uri(self):
         return self.sanction_client.auth_uri(redirect_uri=self.redirect_uri)
@@ -68,8 +89,12 @@ class OpenstaxAccounts(object):
         return self.request('/api/application_users.json?{}'.format(
             urlencode({'q': query})))
 
+    def global_search(self, query):
+        return self.request('/api/users.json?{}'.format(
+            urlencode({'q': query})))
+
     def send_message(self, username, subject, body):
-        users = self.search('username:{}'.format(username))
+        users = self.global_search('username:{}'.format(username))
         userid = None
         for user in users['users']:
             if user['username'] == username:
@@ -86,17 +111,45 @@ class OpenstaxAccounts(object):
                          cgi.escape(body)),
                      }, True))
 
+    def get_profile(self):
+        return self.request('/api/user.json')
+
+    def update_email(self, existing_emails, email):
+        for email in existing_emails:
+            self.request('/api/contact_infos/{}'.format(email['id']))
+        contact_info = self.request('/api/contact_infos.json',
+                                    data=json.dumps({
+                                        'type': 'EmailAddress',
+                                        'value': email,
+                                        }))
+
+    def update_profile(self, request, **post_data):
+        emails = [i for i in request.user.get('contact_infos', [])
+                  if i['type'] == 'EmailAddress']
+        # separate api for updating email address
+        if post_data.get('email') and post_data['email'] not in emails:
+            self.update_email(emails, post_data['email'])
+
+        self.request('/api/user.json', method='PUT',
+                     data=json.dumps(post_data), parser=lambda a: a)
+
+        # update request.user
+        me = self.get_profile()
+        request.session.update({
+            'profile': me,
+            'username': me.get('username'),
+            })
+        request.session.changed()
+
 
 def main(config):
     settings = config.registry.settings
-    server_url = settings['openstax_accounts.server_url']
-    application_id = settings['openstax_accounts.application_id']
-    application_secret = settings['openstax_accounts.application_secret']
-    application_url = settings['openstax_accounts.application_url']
+    OpenstaxAccounts.server_url = settings['openstax_accounts.server_url']
+    OpenstaxAccounts.application_id = settings['openstax_accounts.application_id']
+    OpenstaxAccounts.application_secret = settings['openstax_accounts.application_secret']
+    OpenstaxAccounts.application_url = settings['openstax_accounts.application_url']
 
-    args = (server_url, application_id, application_secret, application_url)
-
-    openstax_accounts = OpenstaxAccounts(*args)
+    openstax_accounts = OpenstaxAccounts()
     openstax_accounts.request_application_token()
     config.registry.registerUtility(openstax_accounts, IOpenstaxAccounts)
 

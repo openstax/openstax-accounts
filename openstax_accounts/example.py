@@ -61,14 +61,52 @@ def index(request):
 def hello_world(request):
     return Response(menu(request) + '<p>Hello world!</p>')
 
-@view_config(route_name='profile')
+@view_config(route_name='profile', request_method='GET')
 @authenticated_only
 def profile(request):
     user = request.user
     profile = '<ul>' + ''.join([
         '<li><strong>{}</strong>: {}</li>'.format(k, v)
         for k, v in user.items()]) + '</ul>'
-    return Response(menu(request) + '<p>Profile</p>' + profile)
+    email = ''
+    if user.get('contact_infos'):
+        for contact_info in user['contact_infos']:
+            if contact_info['type'] == 'EmailAddress':
+                email = contact_info['value']
+    profile_form = '''
+<form method="post">
+    <div>
+        <label for="first-name">First Name:</label>
+        <input id="first-name" name="first_name" value="{first_name}" />
+    </div>
+    <div>
+        <label for="last-name">Last Name:</label>
+        <input id="last-name" name="last_name" value="{last_name}" />
+    </div>
+    <div>
+        <label for="full-name">Full Name:</label>
+        <input id="full-name" name="full_name" value="{full_name}" />
+    </div>
+    <div>
+        <label for="email">Email:</label>
+        <input id="email" name="email" value="{email}" />
+    </div>
+    <input name="submit" type="submit" />
+</form>
+'''.format(email=email, first_name=user.get('first_name', ''),
+           last_name=user.get('last_name', ''),
+           full_name=user.get('full_name', ''))
+    return Response(menu(request) + '<p>Profile</p>' + profile + profile_form)
+
+@view_config(route_name='profile', request_method='POST')
+@authenticated_only
+def post_profile(request):
+    first_name = request.POST['first_name']
+    last_name = request.POST['last_name']
+    full_name = request.POST['full_name']
+    email = request.POST['email']
+    request.accounts_client.update_profile(request, **request.POST)
+    return Response(menu(request) + '<p>Profile updated</p>')
 
 @view_config(route_name='user-search')
 @authenticated_only

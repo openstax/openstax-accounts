@@ -26,17 +26,16 @@ def get_user_from_session(request):
 @implementer(IAuthenticationPolicy)
 class OpenstaxAccountsAuthenticationPolicy(object):
 
-    def __init__(self, client_factory, client_args, application_url,
-            login_path, callback_path, logout_path):
+    def __init__(self, client_factory, application_url, login_path, callback_path, logout_path):
         self.client_factory = client_factory
-        self.client_args = client_args
         self.application_url = application_url
         self.login_path = login_path
         self.callback_path = callback_path
         self.logout_path = logout_path
 
+
     def _login(self, request):
-        client = self.client_factory(*self.client_args)
+        client = self.client_factory()
         raise HTTPFound(location=client.auth_uri())
 
     def authenticated_userid(self, request):
@@ -44,7 +43,7 @@ class OpenstaxAccountsAuthenticationPolicy(object):
             return self._login(request)
         if request.path == self.callback_path:
             code = request.params['code']
-            client = self.client_factory(*self.client_args)
+            client = self.client_factory()
             client.request_token_with_code(code)
             me = client.request('/api/user.json')
             request.session.update({
@@ -71,7 +70,7 @@ class OpenstaxAccountsAuthenticationPolicy(object):
 
     def forget(self, request):
         if self.unauthenticated_userid(request):
-            client = self.client_factory(*self.client_args)
+            client = self.client_factory()
             logout_url = urlparse.urljoin(client.server_url, '/logout')
             return_to = urlparse.urljoin(self.application_url, self.logout_path)
             params = urlencode({'return_to': return_to})
@@ -84,10 +83,6 @@ def main(config):
     settings = config.registry.settings
     config.registry.registerUtility(OpenstaxAccountsAuthenticationPolicy(
         client_factory=config.registry.getUtility(IOpenstaxAccounts, 'factory'),
-        client_args=(settings['openstax_accounts.server_url'],
-                     settings['openstax_accounts.application_id'],
-                     settings['openstax_accounts.application_secret'],
-                     settings['openstax_accounts.application_url']),
         application_url=settings['openstax_accounts.application_url'],
         login_path=settings['openstax_accounts.login_path'],
         callback_path=settings['openstax_accounts.callback_path'],

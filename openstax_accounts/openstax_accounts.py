@@ -60,6 +60,14 @@ class OpenstaxAccounts(object):
                 client_id=self.application_id,
                 client_secret=self.application_secret)
 
+    @property
+    def access_token(self):
+        return self.sanction_client.access_token
+
+    @access_token.setter
+    def access_token(self, access_token):
+        self.sanction_client.access_token = access_token
+
     def auth_uri(self):
         return self.sanction_client.auth_uri(redirect_uri=self.redirect_uri)
 

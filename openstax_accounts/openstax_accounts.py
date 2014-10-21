@@ -68,8 +68,12 @@ class OpenstaxAccounts(object):
         return self.request('/api/application_users.json?{}'.format(
             urlencode({'q': query})))
 
+    def global_search(self, query):
+        return self.request('/api/users.json?{}'.format(
+            urlencode({'q': query})))
+
     def send_message(self, username, subject, body):
-        users = self.search('username:{}'.format(username))
+        users = self.global_search('username:{}'.format(username))
         userid = None
         for user in users['users']:
             if user['username'] == username:

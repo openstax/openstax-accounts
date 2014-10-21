@@ -219,6 +219,39 @@ Message!''' in messages)
         self._test_signup()
         self._test_login()
         self._test_search()
+        self._test_edit_profile()
+
+    def _test_edit_profile(self):
+        # login
+        self.driver.get(self.app_url)
+        self.follow_link('Log in')
+        # redirected to openstax accounts
+        self.fill_in('Username', self.username)
+        self.fill_in('Password', 'password')
+        self.driver.find_element_by_xpath('//button[text()="Sign in"]').click()
+        time.sleep(5)
+        # redirected back to app
+        self.assertTrue('You are currently logged in.' in self.page_text())
+        # check profile data
+        self.follow_link('Profile')
+        self.assertTrue('username: {}'.format(self.username)
+                        in self.page_text())
+        # update profile data
+        self.fill_in('First Name:', 'Test')
+        self.fill_in('Last Name:', 'User')
+        self.driver.find_element_by_name('submit').click()
+
+        # check updated profile data
+        self.follow_link('Profile')
+        self.assertTrue('username: {}'.format(self.username)
+                        in self.page_text())
+        self.assertTrue('first_name: Test' in self.page_text())
+        self.assertTrue('last_name: User' in self.page_text())
+
+        # logout
+        self.driver.get(self.app_url)
+        self.follow_link('Log out')
+        self.assertTrue('You are currently not logged in' in self.page_text())
 
     def _test_signup(self):
         # check that we are not logged in

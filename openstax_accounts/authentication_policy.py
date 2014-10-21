@@ -52,7 +52,7 @@ class OpenstaxAccountsAuthenticationPolicy(object):
         if request.path == self.callback_path:
             code = request.params['code']
             request.accounts_client.request_token_with_code(code)
-            me = request.accounts_client.request('/api/user.json')
+            me = request.accounts_client.get_profile()
             request.session.update({
                 'profile': me,
                 'username': me.get('username'),

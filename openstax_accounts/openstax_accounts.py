@@ -111,6 +111,36 @@ class OpenstaxAccounts(object):
                          cgi.escape(body)),
                      }, True))
 
+    def get_profile(self):
+        return self.request('/api/user.json')
+
+    def update_email(self, existing_emails, email):
+        for email in existing_emails:
+            self.request('/api/contact_infos/{}'.format(email['id']))
+        contact_info = self.request('/api/contact_infos.json',
+                                    data=json.dumps({
+                                        'type': 'EmailAddress',
+                                        'value': email,
+                                        }))
+
+    def update_profile(self, request, **post_data):
+        emails = [i for i in request.user.get('contact_infos', [])
+                  if i['type'] == 'EmailAddress']
+        # separate api for updating email address
+        if post_data.get('email') and post_data['email'] not in emails:
+            self.update_email(emails, post_data['email'])
+
+        self.request('/api/user.json', method='PUT',
+                     data=json.dumps(post_data), parser=lambda a: a)
+
+        # update request.user
+        me = self.get_profile()
+        request.session.update({
+            'profile': me,
+            'username': me.get('username'),
+            })
+        request.session.changed()
+
 
 def main(config):
     settings = config.registry.settings

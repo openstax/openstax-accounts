@@ -174,11 +174,12 @@ class OpenstaxAccounts(object):
     def __init__(self, users):
         self.users = users
 
-    def search(self, query):
+    def search(self, query, **kwargs):
         query = query.replace('%', '*')
+        order_by = kwargs.get('order_by', 'username ASC')
         results = {
                 'application_users': [],
-                'order_by': 'username ASC',
+                'order_by': order_by,
                 'users': [],
                 'num_matching_users': 0,
                 'per_page': 20,
@@ -211,15 +212,16 @@ class OpenstaxAccounts(object):
                         })
                     break
 
-        # sort result by username
-        results['application_users'].sort(
-                lambda a, b: cmp(a['user']['username'], b['user']['username']))
-        results['users'].sort(
-                lambda a, b: cmp(a['username'], b['username']))
+        # sort results
+        for sort_by in order_by.split(','):
+            results['application_users'].sort(
+                lambda a, b: cmp(a['user'].get(sort_by),
+                                 b['user'].get(sort_by)))
+            results['users'].sort(
+                lambda a, b: cmp(a.get(sort_by), b.get(sort_by)))
         results['num_matching_users'] = len(results['users'])
 
         return results
-
 
     def send_message(self, username, subject, body):
         email = None

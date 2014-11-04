@@ -85,9 +85,10 @@ class OpenstaxAccounts(object):
     def request(self, *args, **kwargs):
         return self.sanction_client.request(*args, **kwargs)
 
-    def search(self, query):
+    def search(self, query, **kwargs):
+        kwargs['q'] = query
         return self.request('/api/application_users.json?{}'.format(
-            urlencode({'q': query})))
+            urlencode(kwargs)))
 
     def global_search(self, query):
         return self.request('/api/users.json?{}'.format(

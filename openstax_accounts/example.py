@@ -112,7 +112,7 @@ def post_profile(request):
 @authenticated_only
 def user_search(request):
     util = request.registry.getUtility(IOpenstaxAccounts)
-    users = util.search('%')
+    users = util.search('%', order_by='first_name,last_name')
     if request.matchdict.get('format') == '.json':
         return Response(json.dumps(users), content_type='application/json')
     return Response(menu(request) + '<p>User Search</p>{}'.format(users))

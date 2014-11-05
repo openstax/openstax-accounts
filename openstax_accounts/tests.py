@@ -185,14 +185,17 @@ class FunctionalTests(unittest.TestCase):
         users = json.loads(self.page_text())
         self.assertEqual(users['page'], 0)
         self.assertEqual(users['num_matching_users'], 6)
-        self.assertEqual(users['users'], [
-            {'username': 'aaron', 'id': 1},
-            {'username': 'babara', 'id': 2},
-            {'username': 'caitlin', 'id': 3},
-            {'username': 'dale', 'id': 4},
-            {'username': 'earl', 'id': 5},
-            {'username': 'fabian', 'id': 6},
-            ])
+        # users sorted by first name and last name
+        self.assertEqual(
+            sorted(users['users'],
+                   lambda a, b: cmp(a['username'], b['username'])), [
+                {'username': 'aaron', 'id': 1},
+                {'username': 'babara', 'id': 2},
+                {'username': 'caitlin', 'id': 3},
+                {'username': 'dale', 'id': 4},
+                {'username': 'earl', 'id': 5},
+                {'username': 'fabian', 'id': 6},
+                ])
         # check messaging api
         self.driver.get(self.app_url)
         self.follow_link('Send Message')

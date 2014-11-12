@@ -2,7 +2,9 @@
 
 import cgi
 import json
+import logging
 import urllib
+import pprint
 try:
     from urllib import urlencode
 except ImportError:
@@ -13,9 +15,18 @@ except ImportError:
     import urllib.parse as urlparse # renamed in python3
 
 import sanction
+from pyramid.threadlocal import get_current_registry
 from zope.interface import implementer
 
 from .interfaces import *
+
+
+logger = logging.getLogger('openstax-accounts')
+
+
+class UserNotFoundException(Exception):
+    pass
+
 
 # A json parser for data returned from a request_token request because sanction
 # does not work with a null expires_in
@@ -25,8 +36,19 @@ def parser_remove_null_expires_in(data):
         data.pop('expires_in')
     return data
 
-class UserNotFoundException(Exception):
-    pass
+
+@implementer(IMessageSender)
+def send_message(msg_data):
+    """Send the message using the accounts request."""
+    accounts = get_current_registry().getUtility(IOpenstaxAccounts)
+    accounts.request('/api/messages.json', data=urlencode(msg_data, True))
+
+
+@implementer(IMessageSender)
+def log_message(msg_data):
+    """Log the message to the local logger."""
+    msg_data_as_str = pprint.pformat(msg_data)
+    logger.info("Captured message:\n\n{}".format(msg_data_as_str))
 
 
 @implementer(IOpenstaxAccounts)
@@ -103,14 +125,17 @@ class OpenstaxAccounts(object):
         if userid is None:
             raise UserNotFoundException('User "{}" not found'.format(username))
 
-        self.request('/api/messages.json', data=urlencode({
-                     'user_id': int(userid),
-                     'to[user_ids][]': [int(userid)],
-                     'subject': subject,
-                     'body[text]': body,
-                     'body[html]': '<html><body>{}</body></html>'.format(
-                         cgi.escape(body)),
-                     }, True))
+        msg_data = {
+            'user_id': int(userid),
+            'to[user_ids][]': [int(userid)],
+            'subject': subject,
+            'body[text]': body,
+            'body[html]': '<html><body>{}</body></html>'.format(
+                cgi.escape(body)),
+            }
+
+        send_msg_util = get_current_registry().getUtility(IMessageSender)
+        send_msg_util(msg_data)
 
     def get_profile(self):
         return self.request('/api/user.json')
@@ -149,6 +174,13 @@ def main(config):
     OpenstaxAccounts.application_id = settings['openstax_accounts.application_id']
     OpenstaxAccounts.application_secret = settings['openstax_accounts.application_secret']
     OpenstaxAccounts.application_url = settings['openstax_accounts.application_url']
+
+    # Configure a message sending utility.
+    msg_sending_util = {
+        'default': send_message,
+        'log': log_message,
+        }[settings.get('openstax_accounts.message_sender', 'default')]
+    config.registry.registerUtility(msg_sending_util, IMessageSender)
 
     openstax_accounts = OpenstaxAccounts()
     openstax_accounts.request_application_token()

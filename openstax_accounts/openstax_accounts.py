@@ -116,7 +116,7 @@ class OpenstaxAccounts(object):
         return self.request('/api/users.json?{}'.format(
             urlencode({'q': query})))
 
-    def send_message(self, username, subject, body):
+    def send_message(self, username, subject, text_body, html_body=None):
         users = self.global_search('username:{}'.format(username))
         userid = None
         for user in users['users']:
@@ -125,13 +125,16 @@ class OpenstaxAccounts(object):
         if userid is None:
             raise UserNotFoundException('User "{}" not found'.format(username))
 
+        if html_body is None:
+            html_body = '<html><body>{}</body></html>'.format(
+                cgi.escape(text_body).replace('\n', '\n<br/>'))
+
         msg_data = {
             'user_id': int(userid),
             'to[user_ids][]': [int(userid)],
             'subject': subject,
-            'body[text]': body,
-            'body[html]': '<html><body>{}</body></html>'.format(
-                cgi.escape(body)),
+            'body[text]': text_body,
+            'body[html]': html_body,
             }
 
         send_msg_util = get_current_registry().getUtility(IMessageSender)

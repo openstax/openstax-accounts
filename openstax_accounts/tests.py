@@ -201,18 +201,36 @@ class FunctionalTests(unittest.TestCase):
         self.follow_link('Send Message')
         self.fill_in('Username:', 'earl')
         self.fill_in('Subject:', 'Test')
-        self.fill_in('Body:', 'Message!')
+        self.fill_in('Body:', 'Dear Earl,\n\nMessage!')
         self.driver.find_elements_by_xpath('//input')[-1].click()
         time.sleep(5)
         self.assertTrue('Message sent' in self.page_text())
         # check messages.txt
         with open('messages.txt', 'r') as f:
             messages = f.read()
-        self.assertTrue('''Subject: [subject prefix] Test
+        headers = '''Subject: [subject prefix] Test
 From: openstax-accounts@localhost
 To: earl <earl@example.com>
+'''
+        text_body = '''
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
 
-Message!''' in messages)
+Dear Earl,\r
+\r
+Message!'''
+        html_body = '''
+Content-Type: text/html; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+
+<html><body>Dear Earl,\r
+<br/>\r
+<br/>Message!</body></html>'''
+        self.assertIn(headers, messages)
+        self.assertIn(text_body, messages)
+        self.assertIn(html_body, messages)
         # logout
         self.follow_link('Log out')
         self.assertTrue('You are currently not logged in' in self.page_text())

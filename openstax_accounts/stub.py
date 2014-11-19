@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 
+import cgi
 import copy
 import fnmatch
 import json
 import logging
+from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 from pyramid.httpexceptions import HTTPFound
@@ -223,7 +225,7 @@ class OpenstaxAccounts(object):
 
         return results
 
-    def send_message(self, username, subject, body):
+    def send_message(self, username, subject, text_body, html_body=None):
         email = None
         for user in self.users:
             if user == username:
@@ -232,10 +234,17 @@ class OpenstaxAccounts(object):
         if email is None:
             raise UserNotFoundException('User "{}" not found'.format(username))
 
-        msg = MIMEText(body)
+        if html_body is None:
+            html_body = '<html><body>{}</body></html>'.format(
+                cgi.escape(text_body).replace('\n', '\n<br/>'))
+
+        msg = MIMEMultipart('alternative')
         msg['Subject'] = '[subject prefix] {}'.format(subject)
         msg['From'] = 'openstax-accounts@localhost'
         msg['To'] = '{} <{}>'.format(username, email)
+        msg.attach(MIMEText(text_body, 'plain'))
+        msg.attach(MIMEText(html_body, 'html'))
+
         write_util = get_current_registry().getUtility(IStubMessageWriter)
         write_util.write(msg.as_string())
 

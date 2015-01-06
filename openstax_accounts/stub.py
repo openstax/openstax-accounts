@@ -180,12 +180,8 @@ class OpenstaxAccounts(object):
         query = query.replace('%', '*')
         order_by = kwargs.get('order_by', 'username ASC')
         results = {
-                'application_users': [],
-                'order_by': order_by,
-                'users': [],
-                'num_matching_users': 0,
-                'per_page': 20,
-                'page': 0,
+                'items': [],
+                'total_count': 0,
                 }
         for username in self.users:
             profile = self.users[username]['profile']
@@ -198,17 +194,7 @@ class OpenstaxAccounts(object):
 
             for value in values:
                 if fnmatch.fnmatch(username, query):
-                    results['application_users'].append({
-                        'application_id': 1,
-                        'unread_updates': 1,
-                        # this is the application user id, which we'll fake
-                        'id': profile['id'] + 10,
-                        'user': {
-                            'username': username,
-                            'id': profile['id'],
-                            },
-                        })
-                    results['users'].append({
+                    results['items'].append({
                         'username': username,
                         'id': profile['id'],
                         })
@@ -216,12 +202,9 @@ class OpenstaxAccounts(object):
 
         # sort results
         for sort_by in order_by.split(','):
-            results['application_users'].sort(
-                lambda a, b: cmp(a['user'].get(sort_by),
-                                 b['user'].get(sort_by)))
-            results['users'].sort(
+            results['items'].sort(
                 lambda a, b: cmp(a.get(sort_by), b.get(sort_by)))
-        results['num_matching_users'] = len(results['users'])
+        results['total_count'] = len(results['items'])
 
         return results
 

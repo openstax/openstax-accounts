@@ -119,7 +119,7 @@ class OpenstaxAccounts(object):
     def send_message(self, username, subject, text_body, html_body=None):
         users = self.global_search('username:{}'.format(username))
         userid = None
-        for user in users['users']:
+        for user in users['items']:
             if user['username'] == username:
                 userid = user['id']
         if userid is None:

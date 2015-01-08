@@ -25,6 +25,10 @@ before_install:
   # Install firefox
   - sudo apt-get install --yes firefox
 
+  # Disable SSL certificate verification added in python 2.7.9
+  # See https://bugs.python.org/issue22417
+  - sed -i '/def main/ i \import ssl\nif hasattr(ssl, "_create_unverified_context"):\n    ssl._create_default_https_context = ssl._create_unverified_context\n' openstax_accounts/__init__.py
+
 install:
   - python setup.py install
 env: DRIVER='Firefox'

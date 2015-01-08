@@ -183,11 +183,10 @@ class FunctionalTests(unittest.TestCase):
         # check user search api
         self.follow_link('User Search (JSON)')
         users = json.loads(self.page_text())
-        self.assertEqual(users['page'], 0)
-        self.assertEqual(users['num_matching_users'], 6)
+        self.assertEqual(users['total_count'], 6)
         # users sorted by first name and last name
         self.assertEqual(
-            sorted(users['users'],
+            sorted(users['items'],
                    lambda a, b: cmp(a['username'], b['username'])), [
                 {'username': 'aaron', 'id': 1},
                 {'username': 'babara', 'id': 2},
@@ -344,11 +343,9 @@ Content-Transfer-Encoding: 7bit
             except:
                 if i == 9:
                     raise
-        self.assertEqual(users['page'], 0)
-        self.assertEqual(users['num_matching_users'], 1)
-        self.assertEqual(len(users['application_users']), 1)
-        self.assertEqual(users['application_users'][0]['user']['username'],
-                         self.username)
+        self.assertEqual(users['total_count'], 1)
+        self.assertEqual(len(users['items']), 1)
+        self.assertEqual(users['items'][0]['username'], self.username)
 
         # logout
         self.driver.get(self.app_url)

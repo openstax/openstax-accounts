@@ -5,9 +5,9 @@ setup(
         version='0.13.0',
         description='An example pyramid app that connects to openstax/accounts',
         long_description=open('README.rst').read(),
-        author='Karen Chan',
-        author_email='karen@karen-chan.com',
-        url='http://github.com/karenc/openstax-accounts',
+        author='Connexions team',
+        author_email='info@cnx.org',
+        url='http://github.com/Connexions/openstax-accounts',
         license='LGPL',
         packages=['openstax_accounts'],
         install_requires=(

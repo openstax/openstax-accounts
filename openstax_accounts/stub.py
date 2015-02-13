@@ -172,19 +172,10 @@ class OpenstaxAccounts(object):
                 }
         for username in self.users:
             profile = self.users[username]['profile']
-            values = [username]
-            for key, value in profile.items():
-                if key == 'contact_infos':
-                    values.append(profile['contact_infos'][0]['value'])
-                else:
-                    values.append(value)
-
-            for value in values:
-                if fnmatch.fnmatch(username, query):
-                    results['items'].append({
-                        'username': username,
-                        'id': profile['id'],
-                        })
+            for value in profile.values():
+                if fnmatch.fnmatch(username, query) \
+                   or username in query:
+                    results['items'].append(profile)
                     break
 
         # sort results
@@ -194,6 +185,8 @@ class OpenstaxAccounts(object):
         results['total_count'] = len(results['items'])
 
         return results
+
+    global_search = search
 
     def send_message(self, username, subject, text_body, html_body=None):
         email = None

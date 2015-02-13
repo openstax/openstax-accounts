@@ -179,7 +179,6 @@ class FunctionalTests(unittest.TestCase):
         # check profile data
         self.follow_link('Profile')
         self.assertTrue('username: babara' in self.page_text())
-        self.assertTrue('babara@example.com' in self.page_text())
         # check user search api
         self.follow_link('User Search (JSON)')
         users = json.loads(self.page_text())
@@ -187,14 +186,23 @@ class FunctionalTests(unittest.TestCase):
         # users sorted by first name and last name
         self.assertEqual(
             sorted(users['items'],
-                   lambda a, b: cmp(a['username'], b['username'])), [
-                {'username': 'aaron', 'id': 1},
-                {'username': 'babara', 'id': 2},
-                {'username': 'caitlin', 'id': 3},
-                {'username': 'dale', 'id': 4},
-                {'username': 'earl', 'id': 5},
-                {'username': 'fabian', 'id': 6},
-                ])
+                   lambda a, b: cmp(a['username'], b['username'])),
+            [{'username': 'aaron', 'id': 1,
+              'first_name': "Aaron", 'last_name': "Andersen"},
+             {'username': 'babara', 'id': 2},
+             {'username': 'caitlin', 'id': 3,
+              'first_name': 'Test', 'last_name': 'User', 'title': None,
+              'full_name': 'Test User'},
+             {'username': 'dale', 'id': 4,
+              'first_name': 'Test', 'last_name': 'User', 'title': None,
+              'full_name': 'Test User'},
+             {'username': 'earl', 'id': 5,
+              'first_name': 'Test', 'last_name': 'User', 'title': None,
+              'full_name': 'Test User'},
+             {'username': 'fabian', 'id': 6,
+              'first_name': 'Test', 'last_name': 'User', 'title': None,
+              'full_name': 'Test User'},
+             ])
         # check messaging api
         self.driver.get(self.app_url)
         self.follow_link('Send Message')
@@ -206,30 +214,20 @@ class FunctionalTests(unittest.TestCase):
         self.assertTrue('Message sent' in self.page_text())
         # check messages.txt
         with open('messages.txt', 'r') as f:
+            # Note, on multiple tests runs this can have more than one
+            # message inside the file.
             messages = f.read()
-        headers = '''Subject: [subject prefix] Test
-From: openstax-accounts@localhost
-To: earl <earl@example.com>
-'''
-        text_body = '''
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-
-Dear Earl,\r
-\r
-Message!'''
-        html_body = '''
-Content-Type: text/html; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-
-<html><body>Dear Earl,\r
-<br/>\r
-<br/>Message!</body></html>'''
-        self.assertIn(headers, messages)
-        self.assertIn(text_body, messages)
-        self.assertIn(html_body, messages)
+        # Parse out the messages using the message delimiter.
+        messages = [x for x in messages.split('\n\n\n') if x.strip()]
+        # Grab the last message.
+        message = json.loads(messages[-1])
+        expected = {
+            u'body[html]': u'<html><body>Dear Earl,\r\n<br/>\r\n<br/>Message!</body></html>',
+            u'body[text]': u'Dear Earl,\r\n\r\nMessage!',
+            u'subject': u'Test',
+            u'to[user_ids][]': [5],
+ u'user_id': 5}
+        self.assertEqual(message, expected)
         # logout
         self.follow_link('Log out')
         self.assertTrue('You are currently not logged in' in self.page_text())

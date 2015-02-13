@@ -5,8 +5,6 @@ import copy
 import fnmatch
 import json
 import logging
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 
 from pyramid.httpexceptions import HTTPFound
 from pyramid.interfaces import IAuthenticationPolicy
@@ -189,27 +187,28 @@ class OpenstaxAccounts(object):
     global_search = search
 
     def send_message(self, username, subject, text_body, html_body=None):
-        email = None
-        for user in self.users:
-            if user == username:
-                profile = self.users[user]['profile']
-                email = profile['contact_infos'][0]['value']
-        if email is None:
+        users = self.global_search('username:{}'.format(username))
+        userid = None
+        for user in users['items']:
+            if user['username'] == username:
+                userid = user['id']
+        if userid is None:
             raise UserNotFoundException('User "{}" not found'.format(username))
 
         if html_body is None:
             html_body = '<html><body>{}</body></html>'.format(
                 cgi.escape(text_body).replace('\n', '\n<br/>'))
 
-        msg = MIMEMultipart('alternative')
-        msg['Subject'] = '[subject prefix] {}'.format(subject)
-        msg['From'] = 'openstax-accounts@localhost'
-        msg['To'] = '{} <{}>'.format(username, email)
-        msg.attach(MIMEText(text_body, 'plain'))
-        msg.attach(MIMEText(html_body, 'html'))
+        msg_data = {
+            'user_id': int(userid),
+            'to[user_ids][]': [int(userid)],
+            'subject': subject,
+            'body[text]': text_body,
+            'body[html]': html_body,
+            }
 
         write_util = get_current_registry().getUtility(IStubMessageWriter)
-        write_util.write(msg.as_string())
+        write_util.write(json.dumps(msg_data))
 
 
 def main(config):

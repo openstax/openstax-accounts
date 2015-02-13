@@ -27,12 +27,8 @@ DEFAULT_PROFILE = {
     'id': 1, # to be generated
     'first_name': 'Test',
     'last_name': 'User',
-    'contact_infos': [{
-        'type': 'EmailAddress',
-        'verified': True,
-        'id': 1, # to b generated
-        'value': '', # to be generated
-        }],
+    'full_name': 'Test User',
+    'title': None,
     }
 
 
@@ -46,21 +42,12 @@ def get_users_from_settings(setting):
             username, password = user.split(',', 1)
             profile = copy.deepcopy(DEFAULT_PROFILE)
 
-        if profile.get('contact_infos') is None:
-            profile['contact_infos'] = [DEFAULT_PROFILE['contact_infos'][0] \
-                                       .copy()]
-        if not profile['contact_infos'][0]['value']:
-            profile['contact_infos'][0].update({
-                'id': i + 1,
-                'value': '{}@example.com'.format(username)
-                })
-
         profile['id'] = i + 1
         profile['username'] = username
         users[username] = {
             'profile': profile,
             'password': password,
-                }
+            }
     return users
 
 

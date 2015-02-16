@@ -5,8 +5,6 @@ import copy
 import fnmatch
 import json
 import logging
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 
 from pyramid.httpexceptions import HTTPFound
 from pyramid.interfaces import IAuthenticationPolicy
@@ -27,12 +25,8 @@ DEFAULT_PROFILE = {
     'id': 1, # to be generated
     'first_name': 'Test',
     'last_name': 'User',
-    'contact_infos': [{
-        'type': 'EmailAddress',
-        'verified': True,
-        'id': 1, # to b generated
-        'value': '', # to be generated
-        }],
+    'full_name': 'Test User',
+    'title': None,
     }
 
 
@@ -46,21 +40,12 @@ def get_users_from_settings(setting):
             username, password = user.split(',', 1)
             profile = copy.deepcopy(DEFAULT_PROFILE)
 
-        if profile.get('contact_infos') is None:
-            profile['contact_infos'] = [DEFAULT_PROFILE['contact_infos'][0] \
-                                       .copy()]
-        if not profile['contact_infos'][0]['value']:
-            profile['contact_infos'][0].update({
-                'id': i + 1,
-                'value': '{}@example.com'.format(username)
-                })
-
         profile['id'] = i + 1
         profile['username'] = username
         users[username] = {
             'profile': profile,
             'password': password,
-                }
+            }
     return users
 
 
@@ -185,19 +170,10 @@ class OpenstaxAccounts(object):
                 }
         for username in self.users:
             profile = self.users[username]['profile']
-            values = [username]
-            for key, value in profile.items():
-                if key == 'contact_infos':
-                    values.append(profile['contact_infos'][0]['value'])
-                else:
-                    values.append(value)
-
-            for value in values:
-                if fnmatch.fnmatch(username, query):
-                    results['items'].append({
-                        'username': username,
-                        'id': profile['id'],
-                        })
+            for value in profile.values():
+                if fnmatch.fnmatch(username, query) \
+                   or username in query:
+                    results['items'].append(profile)
                     break
 
         # sort results
@@ -208,28 +184,31 @@ class OpenstaxAccounts(object):
 
         return results
 
+    global_search = search
+
     def send_message(self, username, subject, text_body, html_body=None):
-        email = None
-        for user in self.users:
-            if user == username:
-                profile = self.users[user]['profile']
-                email = profile['contact_infos'][0]['value']
-        if email is None:
+        users = self.global_search('username:{}'.format(username))
+        userid = None
+        for user in users['items']:
+            if user['username'] == username:
+                userid = user['id']
+        if userid is None:
             raise UserNotFoundException('User "{}" not found'.format(username))
 
         if html_body is None:
             html_body = '<html><body>{}</body></html>'.format(
                 cgi.escape(text_body).replace('\n', '\n<br/>'))
 
-        msg = MIMEMultipart('alternative')
-        msg['Subject'] = '[subject prefix] {}'.format(subject)
-        msg['From'] = 'openstax-accounts@localhost'
-        msg['To'] = '{} <{}>'.format(username, email)
-        msg.attach(MIMEText(text_body, 'plain'))
-        msg.attach(MIMEText(html_body, 'html'))
+        msg_data = {
+            'user_id': int(userid),
+            'to[user_ids][]': [int(userid)],
+            'subject': subject,
+            'body[text]': text_body,
+            'body[html]': html_body,
+            }
 
         write_util = get_current_registry().getUtility(IStubMessageWriter)
-        write_util.write(msg.as_string())
+        write_util.write(json.dumps(msg_data))
 
 
 def main(config):

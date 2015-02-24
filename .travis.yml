@@ -33,7 +33,7 @@ install:
   - python setup.py install
 env: DRIVER='Firefox'
 script:
-  - TESTING_INI=test_stub.ini xvfb-run python setup.py test -s openstax_accounts.tests.FunctionalTests.test_stub
+  - TESTING_INI=test_stub.ini xvfb-run python setup.py test -s openstax_accounts.tests.StubTests
   - TESTING_INI=test_local.ini xvfb-run python setup.py test -s openstax_accounts.tests.FunctionalTests.test_local
 notifications:
   email: false

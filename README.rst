@@ -25,13 +25,40 @@ TESTS
 
 1. Copy testing.ini.example to testing.ini and change the values
 
-2. Download chrome driver (and chrome if you don't have it):
-   ``wget 'http://chromedriver.storage.googleapis.com/2.9/chromedriver_linux64.zip'``
+2. Download chrome driver::
 
-3. Unzip chrome driver: ``unzip chromedriver_linux64.zip``
+     wget 'http://chromedriver.storage.googleapis.com/2.14/chromedriver_linux64.zip
 
-4. Add chrome driver to $PATH: ``export PATH=$PATH:.``
+   If you don't have chrome::
 
-5. Make sure the $DISPLAY is set, for example: ``export DISPLAY=:0`` or install ``xvfb``
+     sudo apt-get install chromium-browser
 
-6. ``./bin/python setup.py test`` or ``xvfb-run ./bin/python setup.py test``
+3. Unzip chrome driver::
+
+     unzip chromedriver_linux64.zip
+
+4. Add chrome driver to ``$PATH``::
+
+     export PATH=$PATH:.
+
+5. Make sure the ``$DISPLAY`` is set, for example::
+
+     export DISPLAY=localhost:10.0
+
+   or install ``xvfb``
+
+6. Run browser tests with openstax/accounts::
+
+     ./bin/python setup.py test -s openstax_accounts.tests.FunctionalTests
+
+   or::
+
+     xvfb-run ./bin/python setup.py test -s openstax_accounts.tests.FunctionalTests
+
+7. Run stub tests without openstax/accounts::
+
+     TESTING_INI=test_stub.ini ./bin/python setup.py test -s openstax_accounts.tests.StubTests
+
+   or::
+
+     TESTING_INI=test_stub.ini xvfb-run ./bin/python setup.py test -s openstax_accounts.tests.StubTests

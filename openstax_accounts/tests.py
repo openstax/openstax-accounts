@@ -1,7 +1,7 @@
 try:
-    import ConfigParser # python2
+    import ConfigParser  # python2
 except ImportError:
-    import configparser as ConfigParser # renamed in python3
+    import configparser as ConfigParser  # renamed in python3
 import functools
 import json
 import os
@@ -11,12 +11,13 @@ import time
 import re
 import unittest
 try:
-    import urlparse # python2
+    import urlparse  # python2
 except ImportError:
-    import urllib.parse as urlparse # renamed in python3
+    import urllib.parse as urlparse  # renamed in python3
 
 from pyramid.settings import asbool
 from selenium import webdriver
+
 
 def screenshot_on_error(method):
     @functools.wraps(method)
@@ -31,6 +32,7 @@ def screenshot_on_error(method):
             raise
     return wrapper
 
+
 def log(method):
     @functools.wraps(method)
     def wrapper(self, *args, **kwargs):
@@ -39,79 +41,25 @@ def log(method):
     return wrapper
 
 
-class FunctionalTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.testing_ini = os.getenv('TESTING_INI', 'testing.ini')
+def read_config():
+    testing_ini = os.getenv('TESTING_INI', 'testing.ini')
 
-        cls.config = ConfigParser.ConfigParser({
-            'openstax_accounts.stub': 'false',
-            })
-        cls.config.read([cls.testing_ini])
-        cls.app_url = cls.config.get('app:main', 'openstax_accounts.application_url')
+    config = ConfigParser.ConfigParser({
+        'openstax_accounts.stub': 'false',
+        })
+    config.read([testing_ini])
+    app_url = config.get(
+        'app:main', 'openstax_accounts.application_url')
+    return testing_ini, config, app_url
 
-        if not asbool(cls.config.get('app:main', 'openstax_accounts.stub')):
-            cls.set_up_accounts()
 
-        # start server
-        if os.path.exists('./bin/pserve'):
-            pserve = './bin/pserve'
-        else:
-            pserve = 'pserve'
-        cls.server = subprocess.Popen([pserve, cls.testing_ini])
-
-        time.sleep(5)
-
-    @classmethod
-    @screenshot_on_error
-    def set_up_accounts(cls):
-        driver = os.getenv('DRIVER', 'Chrome')
-        cls.driver = getattr(webdriver, driver)()
-
-        cls.accounts_url = cls.config.get('app:main', 'openstax_accounts.server_url')
-
-        admin_login = cls.config.get('app:main', 'openstax_accounts.admin_login')
-        admin_password = cls.config.get('app:main', 'openstax_accounts.admin_password')
-
-        # login as admin in openstax/accounts
-        cls.driver.get(urlparse.urljoin(cls.accounts_url, '/login'))
-        cls.class_fill_in('Username', admin_login)
-        cls.class_fill_in('Password', admin_password)
-        cls.driver.find_element_by_xpath('//button[text()="Sign in"]').click()
-        time.sleep(5)
-
-        # register our app with openstax/accounts
-        cls.driver.get(urlparse.urljoin(cls.accounts_url, '/oauth/applications'))
-        cls.driver.find_element_by_link_text('New Application').click()
-        cls.class_fill_in('Name', 'pyramid')
-        cls.class_fill_in('Redirect uri', urlparse.urljoin(cls.app_url, '/callback'))
-        cls.class_fill_in('Email subject prefix', '[pyramid]')
-        cls.class_fill_in('Email from address', 'pyramid@e-mail-tester.appspotmail.com')
-        cls.driver.find_element_by_id('application_trusted').click()
-        cls.driver.find_element_by_name('commit').click()
-        time.sleep(5)
-        application_id = cls.driver.find_element_by_id('application_id').text
-        application_secret = cls.driver.find_element_by_id('secret').text
-        cls.driver.quit()
-
-        cls.config.set('app:main', 'openstax_accounts.application_id',
-                application_id)
-        cls.config.set('app:main', 'openstax_accounts.application_secret',
-                application_secret)
-
-        with open(cls.testing_ini, 'w') as f:
-            cls.config.write(f)
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.server.terminate()
-
+class BrowserTestCase(object):
     def fill_in(self, label_text, value):
         for i in range(10):
             # try this 10 times to minimize false negative results...
             try:
-                label = self.driver.find_element_by_xpath('//label[text()="{}"]'
-                        .format(label_text))
+                label = self.driver.find_element_by_xpath(
+                    '//label[text()="{}"]'.format(label_text))
                 break
             except:
                 time.sleep(5)
@@ -146,11 +94,33 @@ class FunctionalTests(unittest.TestCase):
     def page_text(self):
         return re.sub('<[^>]*>', '', self.driver.page_source)
 
+
+class StubTests(BrowserTestCase, unittest.TestCase):
+    # The stub tests expect openstax_accounts.stub = true in the settings ini
+    # file
+
+    @classmethod
+    def setUpClass(cls):
+        cls.testing_ini, cls.config, cls.app_url = read_config()
+        # start server
+        if os.path.exists('./bin/pserve'):
+            pserve = './bin/pserve'
+        else:
+            pserve = 'pserve'
+        print('Start server: {} {}'.format(pserve, cls.testing_ini))
+        cls.server = subprocess.Popen([pserve, cls.testing_ini])
+        time.sleep(5)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.server.terminate()
+
     @screenshot_on_error
     def test_stub(self):
         # check that we are not logged in
         self.driver.get(self.app_url)
-        self.assertTrue('You are currently not logged in' in self.driver.page_source)
+        self.assertTrue('You are currently not logged in' in
+                        self.driver.page_source)
         self.follow_link('Log in')
         # stub login form
         self.fill_in('Username:', 'test')
@@ -222,15 +192,78 @@ class FunctionalTests(unittest.TestCase):
         # Grab the last message.
         message = json.loads(messages[-1])
         expected = {
-            u'body[html]': u'<html><body>Dear Earl,\r\n<br/>\r\n<br/>Message!</body></html>',
+            u'body[html]': (u'<html><body>Dear Earl,\r\n<br/>\r\n<br/>Message!'
+                            u'</body></html>'),
             u'body[text]': u'Dear Earl,\r\n\r\nMessage!',
             u'subject': u'Test',
             u'to[user_ids][]': [5],
- u'user_id': 5}
+            u'user_id': 5}
         self.assertEqual(message, expected)
         # logout
         self.follow_link('Log out')
         self.assertTrue('You are currently not logged in' in self.page_text())
+
+
+class FunctionalTests(BrowserTestCase, unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.testing_ini, cls.config, cls.app_url = read_config()
+
+        cls.set_up_accounts()
+
+        # start server
+        if os.path.exists('./bin/pserve'):
+            pserve = './bin/pserve'
+        else:
+            pserve = 'pserve'
+        print('Start server: {} {}'.format(pserve, cls.testing_ini))
+        cls.server = subprocess.Popen([pserve, cls.testing_ini])
+
+        time.sleep(5)
+
+    @classmethod
+    @screenshot_on_error
+    def set_up_accounts(cls):
+        driver = os.getenv('DRIVER', 'Chrome')
+        cls.driver = getattr(webdriver, driver)()
+
+        cls.accounts_url = cls.config.get('app:main', 'openstax_accounts.server_url')
+
+        admin_login = cls.config.get('app:main', 'openstax_accounts.admin_login')
+        admin_password = cls.config.get('app:main', 'openstax_accounts.admin_password')
+
+        # login as admin in openstax/accounts
+        cls.driver.get(urlparse.urljoin(cls.accounts_url, '/login'))
+        cls.class_fill_in('Username', admin_login)
+        cls.class_fill_in('Password', admin_password)
+        cls.driver.find_element_by_xpath('//button[text()="Sign in"]').click()
+        time.sleep(5)
+
+        # register our app with openstax/accounts
+        cls.driver.get(urlparse.urljoin(cls.accounts_url, '/oauth/applications'))
+        cls.driver.find_element_by_link_text('New Application').click()
+        cls.class_fill_in('Name', 'pyramid')
+        cls.class_fill_in('Redirect uri', urlparse.urljoin(cls.app_url, '/callback'))
+        cls.class_fill_in('Email subject prefix', '[pyramid]')
+        cls.class_fill_in('Email from address', 'pyramid@e-mail-tester.appspotmail.com')
+        cls.driver.find_element_by_id('application_trusted').click()
+        cls.driver.find_element_by_name('commit').click()
+        time.sleep(5)
+        application_id = cls.driver.find_element_by_id('application_id').text
+        application_secret = cls.driver.find_element_by_id('secret').text
+        cls.driver.quit()
+
+        cls.config.set('app:main', 'openstax_accounts.application_id',
+                application_id)
+        cls.config.set('app:main', 'openstax_accounts.application_secret',
+                application_secret)
+
+        with open(cls.testing_ini, 'w') as f:
+            cls.config.write(f)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.server.terminate()
 
     @screenshot_on_error
     def test_local(self):

@@ -53,6 +53,24 @@ def read_config():
     return testing_ini, config, app_url
 
 
+class UtilsTests(unittest.TestCase):
+
+    def test_local_settings(self):
+        prefix = 'xyz'
+        settings = {
+            'xyz.foo': 'bar',
+            'xyz.bar': 'foo',
+            'oof': 'arb',
+            }
+        expected = {
+            'foo': 'bar',
+            'bar': 'foo',
+            }
+        # Test the utility...
+        from .utils import local_settings
+        self.assertEqual(expected, local_settings(settings, prefix='xyz'))
+
+
 class BrowserTestCase(object):
     def fill_in(self, label_text, value):
         for i in range(10):

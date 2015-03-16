@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
         name='openstax-accounts',
-        version='0.15.0',
+        version='1.0.0',
         description='An example pyramid app that connects to openstax/accounts',
         long_description=open('README.rst').read(),
         author='Connexions team',

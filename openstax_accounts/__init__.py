@@ -1,4 +1,10 @@
 # -*- coding: utf-8 -*-
+# ###
+# Copyright (c) 2015, Rice University
+# This software is subject to the provisions of the GNU Affero General
+# Public License version 3 (AGPLv3).
+# See LICENCE.txt for details.
+# ###
 from pyramid.settings import asbool
 
 from .utils import local_settings
@@ -29,6 +35,7 @@ def includeme(config):
     settings = config.registry.settings
     settings = local_settings(settings)
 
+    declare_oauth_routes(config)
     # Disable SSL certificate verification added in python 2.7.9
     # See https://bugs.python.org/issue22417
     if asbool(settings.get('disable_verify_ssl')):
@@ -43,3 +50,4 @@ def includeme(config):
         # use the openstax accounts authentication policy
         config.include('openstax_accounts.openstax_accounts')
         config.include('openstax_accounts.authentication_policy')
+    config.scan('openstax_accounts.views')

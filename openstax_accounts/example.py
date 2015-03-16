@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
-
+# ###
+# Copyright (c) 2015, Rice University
+# This software is subject to the provisions of the GNU Affero General
+# Public License version 3 (AGPLv3).
+# See LICENCE.txt for details.
+# ###
 import functools
 import json
 import uuid
@@ -14,14 +19,8 @@ from pyramid.url import route_url
 from pyramid.view import view_config
 
 from .interfaces import *
+from .views import authenticated_only
 
-def authenticated_only(function):
-    @functools.wraps(function)
-    def wrapper(request, *args, **kwargs):
-        if Authenticated not in request.effective_principals:
-            raise HTTPUnauthorized()
-        return function(request, *args, **kwargs)
-    return wrapper
 
 def menu(request):
     user = request.user
@@ -140,22 +139,6 @@ def send_message(request):
     util.send_message(username, subject, body)
     return Response(menu(request) + '<p>Message sent</p>')
 
-@view_config(route_name='callback')
-@authenticated_only
-def callback(request):
-    # callback must redirect
-    return HTTPFound(location='/')
-
-@view_config(route_name='login')
-@authenticated_only
-def login(request):
-    pass
-
-@view_config(route_name='logout')
-def logout(request):
-    forget(request)
-    raise HTTPFound(location='/')
-
 
 def main(global_config, **settings):
     session_factory = UnencryptedCookieSessionFactoryConfig(
@@ -168,12 +151,9 @@ def main(global_config, **settings):
     config.add_route('profile', '/profile')
     config.add_route('user-search', '/users/search{format:(.json)?}')
     config.add_route('send-message', '/message')
-    config.add_route('callback', '/callback')
-    config.add_route('login', '/login')
-    config.add_route('logout', '/logout')
 
-    config.scan(package='openstax_accounts.example')
     config.include('openstax_accounts')
+    config.scan(package='openstax_accounts.example')
 
     # authorization policy must be set if an authentication policy is set
     config.set_authentication_policy(

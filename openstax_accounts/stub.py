@@ -55,6 +55,26 @@ class StubAuthenticationPolicy(object):
     def __init__(self, users):
         self.users = users
 
+    def _groups(self, request):
+        """A mapping of group ids a list of user ids"""
+        # TODO Ideally, we'd use the accounts groups, but the implementation
+        #      of groups in accounts is not fleshed out enough at this time.
+        #      So for now we pull them from configuration settings.
+        if not hasattr(self, '_parsed_groups'):
+            self._parsed_groups = {}
+            settings = request.registry.settings
+            prefix = 'openstax_accounts.groups'
+            groups = local_settings(settings, prefix=prefix)
+            for group_name, values in groups.items():
+                self._parsed_groups[group_name] = aslist(values)
+        return self._parsed_groups
+
+    def _membership(self, request, userid):
+        """List of groups this `userid` has membership with."""
+        return [group_name
+                for group_name, userids in self._groups(request).items()
+                if userid in userids]
+
     def authenticated_userid(self, request):
         settings = request.registry.settings
         login_path = settings['openstax_accounts.login_path']
@@ -80,7 +100,9 @@ class StubAuthenticationPolicy(object):
         userid = self.authenticated_userid(request)
         if userid:
             principals.append(Authenticated)
-            principals.append(userid)
+            principals.append('u:{}'.format(userid))
+        principals.extend(['g:{}'.format(name)
+                           for name in self._membership(request, userid)])
         return principals
 
     def remember(self, request, principal, **kw):

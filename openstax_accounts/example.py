@@ -37,6 +37,7 @@ def menu(request):
     <li>You are currently {login_status}.</li>
     <li><a href="{hello_world_path}">Hello World!</a></li>
     <li><a href="{profile_path}">Profile</a></li>
+    <li><a href="{membership_path}">Membership (JSON)</a></li>
     <li><a href="{user_search_path}">User Search</a></li>
     <li><a href="{user_search_json_path}">User Search (JSON)</a></li>
     <li><a href="{send_message_path}">Send Message</a></li>
@@ -47,6 +48,7 @@ def menu(request):
         login_logout_path=login_logout_path,
         login_logout_text=login_logout_text,
         profile_path=request.route_url('profile'),
+        membership_path=request.route_url('membership'),
         user_search_path=request.route_url('user-search', format=''),
         user_search_json_path=request.route_url('user-search', format='.json'),
         send_message_path=request.route_url('send-message'),
@@ -96,6 +98,15 @@ def profile(request):
            last_name=user.get('last_name', ''),
            full_name=user.get('full_name', ''))
     return Response(menu(request) + '<p>Profile</p>' + profile + profile_form)
+
+
+@view_config(route_name='membership', request_method='GET',
+             renderer='json')
+@authenticated_only
+def membership(request):
+    """Returns the `effective_principals` for the authenticated user."""
+    return request.effective_principals
+
 
 @view_config(route_name='profile', request_method='POST')
 @authenticated_only
@@ -149,6 +160,7 @@ def main(global_config, **settings):
     config.add_route('index', '/')
     config.add_route('hello-world', '/hello-world')
     config.add_route('profile', '/profile')
+    config.add_route('membership', '/membership.json')
     config.add_route('user-search', '/users/search{format:(.json)?}')
     config.add_route('send-message', '/message')
 

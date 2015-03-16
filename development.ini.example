@@ -12,7 +12,12 @@ openstax_accounts.stub.users =
     dale,password
     earl,password
     fabian,password
-
+openstax_accounts.groups.grp_sol =
+    aaron
+    babara
+openstax_accounts.groups.grp_luna =
+    babara
+    dale
 openstax_accounts.login_path = /login
 openstax_accounts.callback_path = /callback
 openstax_accounts.logout_path = /logout

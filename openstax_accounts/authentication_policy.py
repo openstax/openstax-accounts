@@ -12,10 +12,12 @@ except ImportError:
 from pyramid.httpexceptions import HTTPFound
 from pyramid.interfaces import IAuthenticationPolicy
 from pyramid.security import Everyone, Authenticated
+from pyramid.settings import aslist
 from zope.interface import implementer
 
 from .interfaces import *
 from .utils import local_settings
+
 
 def get_user_from_session(request):
     """Create a helper function for getting the user profile from request.user
@@ -46,6 +48,26 @@ class OpenstaxAccountsAuthenticationPolicy(object):
     def _login(self, request):
         raise HTTPFound(location=request.accounts_client.auth_uri())
 
+    def _groups(self, request):
+        """A mapping of group ids a list of user ids"""
+        # TODO Ideally, we'd use the accounts groups, but the implementation
+        #      of groups in accounts is not fleshed out enough at this time.
+        #      So for now we pull them from configuration settings.
+        if not hasattr(self, '_parsed_groups'):
+            self._parsed_groups = {}
+            settings = request.registry.settings
+            prefix = 'openstax_accounts.groups'
+            groups = local_settings(settings, prefix=prefix)
+            for group_name, values in groups.items():
+                self._parsed_groups[group_name] = aslist(values)
+        return self._parsed_groups
+
+    def _membership(self, request, userid):
+        """List of groups this `userid` has membership with."""
+        return [group_name
+                for group_name, userids in self._groups(request).items()
+                if userid in userids]
+
     def authenticated_userid(self, request):
         if request.path == self.login_path:
             return self._login(request)
@@ -70,7 +92,9 @@ class OpenstaxAccountsAuthenticationPolicy(object):
         userid = self.authenticated_userid(request)
         if userid:
             groups.append(Authenticated)
-            groups.append(userid)
+            groups.append('u:{}'.format(userid))
+        groups.extend(['g:{}'.format(name)
+                       for name in self._membership(request, userid)])
         return groups
 
     def remember(self, request, principal, **kw):

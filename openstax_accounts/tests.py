@@ -286,6 +286,14 @@ class StubFunctionalTests(BaseFunctionalTests):
               'first_name': 'Test', 'last_name': 'User', 'title': None,
               'full_name': 'Test User'},
              ])
+        # Check for group membership
+        self.driver.get(self.app_url)
+        self.follow_link('Membership (JSON)')
+        principals = json.loads(self.page_text())
+        self.assertEqual(len(principals), 5)
+        expected = ['g:grp_luna', 'g:grp_sol',
+                    'system.Authenticated', 'system.Everyone', 'u:babara']
+        self.assertEqual(sorted(principals), expected)
         # check messaging api
         self.driver.get(self.app_url)
         self.follow_link('Send Message')

@@ -17,6 +17,7 @@ except ImportError:
 
 from pyramid.settings import asbool
 from selenium import webdriver
+from zope.interface.verify import verifyClass
 
 
 def screenshot_on_error(method):
@@ -71,7 +72,48 @@ class UtilsTests(unittest.TestCase):
         self.assertEqual(expected, local_settings(settings, prefix='xyz'))
 
 
+class InterfaceTests(unittest.TestCase):
+    """Verify the classes implement the interfaces."""
+
+    @property
+    def openstaxaccounts_iface(self):
+        from .interfaces import IOpenstaxAccounts as iface
+        return iface
+
+    @property
+    def authenticationpolicy_iface(self):
+        from pyramid.interfaces import IAuthenticationPolicy as iface
+        return iface
+
+    @property
+    def openstaxaccountsauthenticationpolicy_iface(self):
+        from .interfaces import IOpenstaxAccountsAuthenticationPolicy as iface
+        return iface
+
+    def test_stub(self):
+        from .stub import (
+            StubAuthenticationPolicy,
+            OpenstaxAccounts)
+        verifyClass(self.authenticationpolicy_iface,
+                    StubAuthenticationPolicy)
+        verifyClass(self.openstaxaccountsauthenticationpolicy_iface,
+                    StubAuthenticationPolicy)
+        verifyClass(self.openstaxaccounts_iface,
+                    OpenstaxAccounts)
+
+    def test_openstax_accounts(self):
+        from .openstax_accounts import OpenstaxAccounts
+        from .authentication_policy import OpenstaxAccountsAuthenticationPolicy
+        verifyClass(self.authenticationpolicy_iface,
+                    OpenstaxAccountsAuthenticationPolicy)
+        verifyClass(self.openstaxaccountsauthenticationpolicy_iface,
+                    OpenstaxAccountsAuthenticationPolicy)
+        verifyClass(self.openstaxaccounts_iface,
+                    OpenstaxAccounts)
+
+
 class BrowserTestCase(object):
+
     def fill_in(self, label_text, value):
         for i in range(10):
             # try this 10 times to minimize false negative results...

@@ -34,7 +34,7 @@ def get_accounts_client(request):
     return client
 
 
-@implementer(IAuthenticationPolicy)
+@implementer(IOpenstaxAccountsAuthenticationPolicy)
 class OpenstaxAccountsAuthenticationPolicy(object):
 
     def __init__(self, application_url, login_path, callback_path, logout_path):

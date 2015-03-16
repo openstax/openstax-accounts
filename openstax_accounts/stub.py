@@ -49,7 +49,7 @@ def get_users_from_settings(setting):
     return users
 
 
-@implementer(IAuthenticationPolicy)
+@implementer(IOpenstaxAccountsAuthenticationPolicy)
 class StubAuthenticationPolicy(object):
     def __init__(self, users):
         self.users = users
@@ -209,6 +209,15 @@ class OpenstaxAccounts(object):
 
         write_util = get_current_registry().getUtility(IStubMessageWriter)
         write_util.write(json.dumps(msg_data))
+
+    def get_profile(self):
+        raise NotImplementedError
+
+    def update_email(self, existing_emails, email):
+        raise NotImplementedError
+
+    def update_profile(self, request, **post_data):
+        raise NotImplementedError
 
 
 def main(config):

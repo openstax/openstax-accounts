@@ -15,7 +15,7 @@ from pyramid.security import Everyone, Authenticated
 from zope.interface import implementer
 
 from .interfaces import *
-
+from .utils import local_settings
 
 def get_user_from_session(request):
     """Create a helper function for getting the user profile from request.user
@@ -86,14 +86,21 @@ class OpenstaxAccountsAuthenticationPolicy(object):
             raise HTTPFound(location='?'.join([logout_url, params]))
 
 
+# BBB (11-Mar-2015) Deprecated, use 'includeme' by invoking
+#     ``config.include('openstax_accounts')``.
 def main(config):
+    includeme(config)
+
+
+def includeme(config):
     config.add_request_method(get_user_from_session, 'user', reify=True)
     config.add_request_method(get_accounts_client, 'accounts_client',
                               reify=True)
     settings = config.registry.settings
+    settings = local_settings(settings)
     config.registry.registerUtility(OpenstaxAccountsAuthenticationPolicy(
-        application_url=settings['openstax_accounts.application_url'],
-        login_path=settings['openstax_accounts.login_path'],
-        callback_path=settings['openstax_accounts.callback_path'],
-        logout_path=settings['openstax_accounts.logout_path'],
+        application_url=settings['application_url'],
+        login_path=settings['login_path'],
+        callback_path=settings['callback_path'],
+        logout_path=settings['logout_path'],
         ), IOpenstaxAccountsAuthenticationPolicy)

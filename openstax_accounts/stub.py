@@ -18,6 +18,7 @@ from zope.interface import implementer, Interface
 from .authentication_policy import get_user_from_session
 from .interfaces import *
 from .openstax_accounts import UserNotFoundException
+from .utils import local_settings
 
 
 DEFAULT_PROFILE = {
@@ -220,15 +221,20 @@ class OpenstaxAccounts(object):
         raise NotImplementedError
 
 
+# BBB (11-Mar-2015) Deprecated, use 'includeme' by invoking
+#     ``config.include('openstax_accounts')``.
 def main(config):
+    includeme(config)
+
+
+def includeme(config):
     config.add_request_method(get_user_from_session, 'user', reify=True)
     settings = config.registry.settings
-    users = get_users_from_settings(settings.get(
-        'openstax_accounts.stub.users'))
-    writer_type = settings.get('openstax_accounts.stub.message_writer',
-                               'file')
+    settings = local_settings(settings)
+    users = get_users_from_settings(settings.get('stub.users'))
+    writer_type = settings.get('stub.message_writer', 'file')
 
-    # set authentication policy
+    # Set authentication policy
     config.registry.registerUtility(StubAuthenticationPolicy(users),
                                     IOpenstaxAccountsAuthenticationPolicy)
 
@@ -236,6 +242,7 @@ def main(config):
     config.add_route('stub-login-form', '/stub-login-form')
 
     # register stub openstax accounts utility
+    # TODO register is named mapping somewhere rather than hardcode it.
     writer_mapping = {
         'file': FileWriter,
         'log': LogWriter,

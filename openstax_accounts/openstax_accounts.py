@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 import cgi
 import json
 import logging
@@ -19,7 +18,7 @@ from pyramid.threadlocal import get_current_registry
 from zope.interface import implementer
 
 from .interfaces import *
-
+from .utils import local_settings
 
 logger = logging.getLogger('openstax-accounts')
 
@@ -81,6 +80,14 @@ class OpenstaxAccounts(object):
                 resource_endpoint=resource_url,
                 client_id=self.application_id,
                 client_secret=self.application_secret)
+
+    @staticmethod
+    def singleton(settings):
+        cls = OpenstaxAccounts
+        cls.server_url = settings['server_url']
+        cls.application_id = settings['application_id']
+        cls.application_secret = settings['application_secret']
+        cls.application_url = settings['application_url']
 
     @property
     def access_token(self):
@@ -171,21 +178,26 @@ class OpenstaxAccounts(object):
         request.session.changed()
 
 
+# BBB (11-Mar-2015) Deprecated, use 'includeme' by invoking
+#     ``config.include('openstax_accounts')``.
 def main(config):
+    includeme(config)
+
+def includeme(config):
     settings = config.registry.settings
-    OpenstaxAccounts.server_url = settings['openstax_accounts.server_url']
-    OpenstaxAccounts.application_id = settings['openstax_accounts.application_id']
-    OpenstaxAccounts.application_secret = settings['openstax_accounts.application_secret']
-    OpenstaxAccounts.application_url = settings['openstax_accounts.application_url']
+    settings = local_settings(settings)
+    OpenstaxAccounts.singleton(settings)
 
     # Configure a message sending utility.
+    # TODO register is named mapping somewhere rather than hardcode it.
     msg_sending_util = {
         'default': send_message,
         'log': log_message,
-        }[settings.get('openstax_accounts.message_sender', 'default')]
+        }[settings.get('message_sender', 'default')]
     config.registry.registerUtility(msg_sending_util, IMessageSender)
 
     openstax_accounts = OpenstaxAccounts()
+    # FIXME Do this as an application startup event.
     openstax_accounts.request_application_token()
     config.registry.registerUtility(openstax_accounts, IOpenstaxAccounts)
 

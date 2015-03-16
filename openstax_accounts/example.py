@@ -156,6 +156,7 @@ def logout(request):
     forget(request)
     raise HTTPFound(location='/')
 
+
 def main(global_config, **settings):
     session_factory = UnencryptedCookieSessionFactoryConfig(
             str(uuid.uuid4()))
@@ -172,7 +173,7 @@ def main(global_config, **settings):
     config.add_route('logout', '/logout')
 
     config.scan(package='openstax_accounts.example')
-    config.include('openstax_accounts.main')
+    config.include('openstax_accounts')
 
     # authorization policy must be set if an authentication policy is set
     config.set_authentication_policy(

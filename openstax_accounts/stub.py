@@ -111,9 +111,11 @@ class StubAuthenticationPolicy(object):
             'profile': kw.get('profile'),
             })
         request.session.changed()
+        return []
 
     def forget(self, request):
         request.session.clear()
+        return []
 
 
 @view_config(route_name='stub-login-form', request_method=['GET', 'POST'])

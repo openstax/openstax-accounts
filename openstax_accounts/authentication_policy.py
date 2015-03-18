@@ -98,7 +98,7 @@ class OpenstaxAccountsAuthenticationPolicy(object):
         return groups
 
     def remember(self, request, principal, **kw):
-        pass
+        return []
 
     def forget(self, request):
         if self.unauthenticated_userid(request):
@@ -108,6 +108,7 @@ class OpenstaxAccountsAuthenticationPolicy(object):
             params = urlencode({'return_to': return_to})
             request.session.clear()
             raise HTTPFound(location='?'.join([logout_url, params]))
+        return []
 
 
 # BBB (11-Mar-2015) Deprecated, use 'includeme' by invoking

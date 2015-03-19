@@ -18,6 +18,7 @@ from zope.interface import implementer, Interface
 from .authentication_policy import get_user_from_session
 from .interfaces import *
 from .openstax_accounts import UserNotFoundException
+from .utils import local_settings
 
 
 DEFAULT_PROFILE = {
@@ -49,10 +50,30 @@ def get_users_from_settings(setting):
     return users
 
 
-@implementer(IAuthenticationPolicy)
+@implementer(IOpenstaxAccountsAuthenticationPolicy)
 class StubAuthenticationPolicy(object):
     def __init__(self, users):
         self.users = users
+
+    def _groups(self, request):
+        """A mapping of group ids a list of user ids"""
+        # TODO Ideally, we'd use the accounts groups, but the implementation
+        #      of groups in accounts is not fleshed out enough at this time.
+        #      So for now we pull them from configuration settings.
+        if not hasattr(self, '_parsed_groups'):
+            self._parsed_groups = {}
+            settings = request.registry.settings
+            prefix = 'openstax_accounts.groups'
+            groups = local_settings(settings, prefix=prefix)
+            for group_name, values in groups.items():
+                self._parsed_groups[group_name] = aslist(values)
+        return self._parsed_groups
+
+    def _membership(self, request, userid):
+        """List of groups this `userid` has membership with."""
+        return [group_name
+                for group_name, userids in self._groups(request).items()
+                if userid in userids]
 
     def authenticated_userid(self, request):
         settings = request.registry.settings
@@ -79,7 +100,9 @@ class StubAuthenticationPolicy(object):
         userid = self.authenticated_userid(request)
         if userid:
             principals.append(Authenticated)
-            principals.append(userid)
+            principals.append('u:{}'.format(userid))
+        principals.extend(['g:{}'.format(name)
+                           for name in self._membership(request, userid)])
         return principals
 
     def remember(self, request, principal, **kw):
@@ -88,9 +111,11 @@ class StubAuthenticationPolicy(object):
             'profile': kw.get('profile'),
             })
         request.session.changed()
+        return []
 
     def forget(self, request):
         request.session.clear()
+        return []
 
 
 @view_config(route_name='stub-login-form', request_method=['GET', 'POST'])
@@ -210,16 +235,30 @@ class OpenstaxAccounts(object):
         write_util = get_current_registry().getUtility(IStubMessageWriter)
         write_util.write(json.dumps(msg_data))
 
+    def get_profile(self):
+        raise NotImplementedError
 
+    def update_email(self, existing_emails, email):
+        raise NotImplementedError
+
+    def update_profile(self, request, **post_data):
+        raise NotImplementedError
+
+
+# BBB (11-Mar-2015) Deprecated, use 'includeme' by invoking
+#     ``config.include('openstax_accounts')``.
 def main(config):
+    includeme(config)
+
+
+def includeme(config):
     config.add_request_method(get_user_from_session, 'user', reify=True)
     settings = config.registry.settings
-    users = get_users_from_settings(settings.get(
-        'openstax_accounts.stub.users'))
-    writer_type = settings.get('openstax_accounts.stub.message_writer',
-                               'file')
+    settings = local_settings(settings)
+    users = get_users_from_settings(settings.get('stub.users'))
+    writer_type = settings.get('stub.message_writer', 'file')
 
-    # set authentication policy
+    # Set authentication policy
     config.registry.registerUtility(StubAuthenticationPolicy(users),
                                     IOpenstaxAccountsAuthenticationPolicy)
 
@@ -227,6 +266,7 @@ def main(config):
     config.add_route('stub-login-form', '/stub-login-form')
 
     # register stub openstax accounts utility
+    # TODO register is named mapping somewhere rather than hardcode it.
     writer_mapping = {
         'file': FileWriter,
         'log': LogWriter,

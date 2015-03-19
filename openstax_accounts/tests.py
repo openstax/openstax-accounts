@@ -17,6 +17,11 @@ except ImportError:
 
 from pyramid.settings import asbool
 from selenium import webdriver
+from zope.interface.verify import verifyClass
+
+
+STUB_INI = os.getenv('STUB_INI', 'testing.ini')
+LOCAL_INI = os.getenv('LOCAL_INI', None)
 
 
 def screenshot_on_error(method):
@@ -41,9 +46,7 @@ def log(method):
     return wrapper
 
 
-def read_config():
-    testing_ini = os.getenv('TESTING_INI', 'testing.ini')
-
+def read_config(testing_ini):
     config = ConfigParser.ConfigParser({
         'openstax_accounts.stub': 'false',
         })
@@ -53,7 +56,131 @@ def read_config():
     return testing_ini, config, app_url
 
 
-class BrowserTestCase(object):
+class UtilsTests(unittest.TestCase):
+
+    def test_local_settings(self):
+        prefix = 'xyz'
+        settings = {
+            'xyz.foo': 'bar',
+            'xyz.bar': 'foo',
+            'oof': 'arb',
+            }
+        expected = {
+            'foo': 'bar',
+            'bar': 'foo',
+            }
+        # Test the utility...
+        from .utils import local_settings
+        self.assertEqual(expected, local_settings(settings, prefix='xyz'))
+
+
+class InterfaceTests(unittest.TestCase):
+    """Verify the classes implement the interfaces."""
+
+    @property
+    def openstaxaccounts_iface(self):
+        from .interfaces import IOpenstaxAccounts as iface
+        return iface
+
+    @property
+    def authenticationpolicy_iface(self):
+        from pyramid.interfaces import IAuthenticationPolicy as iface
+        return iface
+
+    @property
+    def openstaxaccountsauthenticationpolicy_iface(self):
+        from .interfaces import IOpenstaxAccountsAuthenticationPolicy as iface
+        return iface
+
+    def test_stub(self):
+        from .stub import (
+            StubAuthenticationPolicy,
+            OpenstaxAccounts)
+        verifyClass(self.authenticationpolicy_iface,
+                    StubAuthenticationPolicy)
+        verifyClass(self.openstaxaccountsauthenticationpolicy_iface,
+                    StubAuthenticationPolicy)
+        verifyClass(self.openstaxaccounts_iface,
+                    OpenstaxAccounts)
+
+    def test_openstax_accounts(self):
+        from .openstax_accounts import OpenstaxAccounts
+        from .authentication_policy import OpenstaxAccountsAuthenticationPolicy
+        verifyClass(self.authenticationpolicy_iface,
+                    OpenstaxAccountsAuthenticationPolicy)
+        verifyClass(self.openstaxaccountsauthenticationpolicy_iface,
+                    OpenstaxAccountsAuthenticationPolicy)
+        verifyClass(self.openstaxaccounts_iface,
+                    OpenstaxAccounts)
+
+
+class BaseFunctionalTests(unittest.TestCase):
+
+    @staticmethod
+    def get_ini_path():
+        raise NotImplementedError
+
+    @classmethod
+    def setUpClass(cls):
+        config_parts = read_config(cls.get_ini_path())
+        cls.testing_ini, cls.config, cls.app_url = config_parts
+
+        if not asbool(cls.config.get('app:main', 'openstax_accounts.stub')):
+            cls.set_up_accounts()
+
+        # start server
+        if os.path.exists('./bin/pserve'):
+            pserve = './bin/pserve'
+        else:
+            pserve = 'pserve'
+        cls.server = subprocess.Popen([pserve, cls.testing_ini])
+
+        time.sleep(5)
+
+    @classmethod
+    @screenshot_on_error
+    def set_up_accounts(cls):
+        driver = os.getenv('DRIVER', 'Chrome')
+        cls.driver = getattr(webdriver, driver)()
+
+        cls.accounts_url = cls.config.get('app:main', 'openstax_accounts.server_url')
+
+        admin_login = cls.config.get('app:main', 'openstax_accounts.admin_login')
+        admin_password = cls.config.get('app:main', 'openstax_accounts.admin_password')
+
+        # login as admin in openstax/accounts
+        cls.driver.get(urlparse.urljoin(cls.accounts_url, '/login'))
+        cls.class_fill_in('Username', admin_login)
+        cls.class_fill_in('Password', admin_password)
+        cls.driver.find_element_by_xpath('//button[text()="Sign in"]').click()
+        time.sleep(5)
+
+        # register our app with openstax/accounts
+        cls.driver.get(urlparse.urljoin(cls.accounts_url, '/oauth/applications'))
+        cls.driver.find_element_by_link_text('New Application').click()
+        cls.class_fill_in('Name', 'pyramid')
+        cls.class_fill_in('Redirect uri', urlparse.urljoin(cls.app_url, '/callback'))
+        cls.class_fill_in('Email subject prefix', '[pyramid]')
+        cls.class_fill_in('Email from address', 'pyramid@e-mail-tester.appspotmail.com')
+        cls.driver.find_element_by_id('application_trusted').click()
+        cls.driver.find_element_by_name('commit').click()
+        time.sleep(5)
+        application_id = cls.driver.find_element_by_id('application_id').text
+        application_secret = cls.driver.find_element_by_id('secret').text
+        cls.driver.quit()
+
+        cls.config.set('app:main', 'openstax_accounts.application_id',
+                application_id)
+        cls.config.set('app:main', 'openstax_accounts.application_secret',
+                application_secret)
+
+        with open(cls.testing_ini, 'w') as f:
+            cls.config.write(f)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.server.terminate()
+
     def fill_in(self, label_text, value):
         for i in range(10):
             # try this 10 times to minimize false negative results...
@@ -95,25 +222,11 @@ class BrowserTestCase(object):
         return re.sub('<[^>]*>', '', self.driver.page_source)
 
 
-class StubTests(BrowserTestCase, unittest.TestCase):
-    # The stub tests expect openstax_accounts.stub = true in the settings ini
-    # file
+class StubFunctionalTests(BaseFunctionalTests):
 
-    @classmethod
-    def setUpClass(cls):
-        cls.testing_ini, cls.config, cls.app_url = read_config()
-        # start server
-        if os.path.exists('./bin/pserve'):
-            pserve = './bin/pserve'
-        else:
-            pserve = 'pserve'
-        print('Start server: {} {}'.format(pserve, cls.testing_ini))
-        cls.server = subprocess.Popen([pserve, cls.testing_ini])
-        time.sleep(5)
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.server.terminate()
+    @staticmethod
+    def get_ini_path():
+        return STUB_INI
 
     @screenshot_on_error
     def test_stub(self):
@@ -173,6 +286,14 @@ class StubTests(BrowserTestCase, unittest.TestCase):
               'first_name': 'Test', 'last_name': 'User', 'title': None,
               'full_name': 'Test User'},
              ])
+        # Check for group membership
+        self.driver.get(self.app_url)
+        self.follow_link('Membership (JSON)')
+        principals = json.loads(self.page_text())
+        self.assertEqual(len(principals), 5)
+        expected = ['g:grp_luna', 'g:grp_sol',
+                    'system.Authenticated', 'system.Everyone', 'u:babara']
+        self.assertEqual(sorted(principals), expected)
         # check messaging api
         self.driver.get(self.app_url)
         self.follow_link('Send Message')
@@ -204,66 +325,13 @@ class StubTests(BrowserTestCase, unittest.TestCase):
         self.assertTrue('You are currently not logged in' in self.page_text())
 
 
-class FunctionalTests(BrowserTestCase, unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.testing_ini, cls.config, cls.app_url = read_config()
+@unittest.skipUnless(LOCAL_INI is not None,
+                     "environment variable 'LOCAL_INI' not set.")
+class LocalFunctionalTests(BaseFunctionalTests):
 
-        cls.set_up_accounts()
-
-        # start server
-        if os.path.exists('./bin/pserve'):
-            pserve = './bin/pserve'
-        else:
-            pserve = 'pserve'
-        print('Start server: {} {}'.format(pserve, cls.testing_ini))
-        cls.server = subprocess.Popen([pserve, cls.testing_ini])
-
-        time.sleep(5)
-
-    @classmethod
-    @screenshot_on_error
-    def set_up_accounts(cls):
-        driver = os.getenv('DRIVER', 'Chrome')
-        cls.driver = getattr(webdriver, driver)()
-
-        cls.accounts_url = cls.config.get('app:main', 'openstax_accounts.server_url')
-
-        admin_login = cls.config.get('app:main', 'openstax_accounts.admin_login')
-        admin_password = cls.config.get('app:main', 'openstax_accounts.admin_password')
-
-        # login as admin in openstax/accounts
-        cls.driver.get(urlparse.urljoin(cls.accounts_url, '/login'))
-        cls.class_fill_in('Username', admin_login)
-        cls.class_fill_in('Password', admin_password)
-        cls.driver.find_element_by_xpath('//button[text()="Sign in"]').click()
-        time.sleep(5)
-
-        # register our app with openstax/accounts
-        cls.driver.get(urlparse.urljoin(cls.accounts_url, '/oauth/applications'))
-        cls.driver.find_element_by_link_text('New Application').click()
-        cls.class_fill_in('Name', 'pyramid')
-        cls.class_fill_in('Redirect uri', urlparse.urljoin(cls.app_url, '/callback'))
-        cls.class_fill_in('Email subject prefix', '[pyramid]')
-        cls.class_fill_in('Email from address', 'pyramid@e-mail-tester.appspotmail.com')
-        cls.driver.find_element_by_id('application_trusted').click()
-        cls.driver.find_element_by_name('commit').click()
-        time.sleep(5)
-        application_id = cls.driver.find_element_by_id('application_id').text
-        application_secret = cls.driver.find_element_by_id('secret').text
-        cls.driver.quit()
-
-        cls.config.set('app:main', 'openstax_accounts.application_id',
-                application_id)
-        cls.config.set('app:main', 'openstax_accounts.application_secret',
-                application_secret)
-
-        with open(cls.testing_ini, 'w') as f:
-            cls.config.write(f)
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.server.terminate()
+    @staticmethod
+    def get_ini_path():
+        return LOCAL_INI
 
     @screenshot_on_error
     def test_local(self):
@@ -383,6 +451,7 @@ class FunctionalTests(BrowserTestCase, unittest.TestCase):
         self.follow_link('Log out')
         self.assertTrue('You are currently not logged in' in self.page_text())
 
+    @unittest.skip("manual testing only")
     @screenshot_on_error
     def test_facebook(self):
         facebook = dict(self.config.items('test:facebook'))
@@ -418,6 +487,7 @@ class FunctionalTests(BrowserTestCase, unittest.TestCase):
         self.follow_link('Log out')
         self.assertTrue('You are currently not logged in' in self.page_text())
 
+    @unittest.skip("manual testing only")
     @screenshot_on_error
     def test_twitter(self):
         twitter = dict(self.config.items('test:twitter'))
@@ -452,6 +522,7 @@ class FunctionalTests(BrowserTestCase, unittest.TestCase):
         self.follow_link('Log out')
         self.assertTrue('You are currently not logged in' in self.page_text())
 
+    @unittest.skip("manual testing only")
     @screenshot_on_error
     def test_google(self):
         google = dict(self.config.items('test:google'))

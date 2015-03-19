@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
-
+# ###
+# Copyright (c) 2015, Rice University
+# This software is subject to the provisions of the GNU Affero General
+# Public License version 3 (AGPLv3).
+# See LICENCE.txt for details.
+# ###
 import functools
 import json
 import uuid
@@ -14,14 +19,8 @@ from pyramid.url import route_url
 from pyramid.view import view_config
 
 from .interfaces import *
+from .views import authenticated_only
 
-def authenticated_only(function):
-    @functools.wraps(function)
-    def wrapper(request, *args, **kwargs):
-        if Authenticated not in request.effective_principals:
-            raise HTTPUnauthorized()
-        return function(request, *args, **kwargs)
-    return wrapper
 
 def menu(request):
     user = request.user
@@ -38,6 +37,7 @@ def menu(request):
     <li>You are currently {login_status}.</li>
     <li><a href="{hello_world_path}">Hello World!</a></li>
     <li><a href="{profile_path}">Profile</a></li>
+    <li><a href="{membership_path}">Membership (JSON)</a></li>
     <li><a href="{user_search_path}">User Search</a></li>
     <li><a href="{user_search_json_path}">User Search (JSON)</a></li>
     <li><a href="{send_message_path}">Send Message</a></li>
@@ -48,6 +48,7 @@ def menu(request):
         login_logout_path=login_logout_path,
         login_logout_text=login_logout_text,
         profile_path=request.route_url('profile'),
+        membership_path=request.route_url('membership'),
         user_search_path=request.route_url('user-search', format=''),
         user_search_json_path=request.route_url('user-search', format='.json'),
         send_message_path=request.route_url('send-message'),
@@ -98,6 +99,15 @@ def profile(request):
            full_name=user.get('full_name', ''))
     return Response(menu(request) + '<p>Profile</p>' + profile + profile_form)
 
+
+@view_config(route_name='membership', request_method='GET',
+             renderer='json')
+@authenticated_only
+def membership(request):
+    """Returns the `effective_principals` for the authenticated user."""
+    return request.effective_principals
+
+
 @view_config(route_name='profile', request_method='POST')
 @authenticated_only
 def post_profile(request):
@@ -140,21 +150,6 @@ def send_message(request):
     util.send_message(username, subject, body)
     return Response(menu(request) + '<p>Message sent</p>')
 
-@view_config(route_name='callback')
-@authenticated_only
-def callback(request):
-    # callback must redirect
-    return HTTPFound(location='/')
-
-@view_config(route_name='login')
-@authenticated_only
-def login(request):
-    pass
-
-@view_config(route_name='logout')
-def logout(request):
-    forget(request)
-    raise HTTPFound(location='/')
 
 def main(global_config, **settings):
     session_factory = UnencryptedCookieSessionFactoryConfig(
@@ -165,14 +160,12 @@ def main(global_config, **settings):
     config.add_route('index', '/')
     config.add_route('hello-world', '/hello-world')
     config.add_route('profile', '/profile')
+    config.add_route('membership', '/membership.json')
     config.add_route('user-search', '/users/search{format:(.json)?}')
     config.add_route('send-message', '/message')
-    config.add_route('callback', '/callback')
-    config.add_route('login', '/login')
-    config.add_route('logout', '/logout')
 
+    config.include('openstax_accounts')
     config.scan(package='openstax_accounts.example')
-    config.include('openstax_accounts.main')
 
     # authorization policy must be set if an authentication policy is set
     config.set_authentication_policy(

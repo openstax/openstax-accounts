@@ -150,6 +150,13 @@ class OpenstaxAccounts(object):
     def get_profile(self):
         return self.request('/api/user.json')
 
+    def get_profile_by_username(self, username):
+        path = '/api/application_users/find/username/{}'.format(username)
+        try:
+            return self.request(path)['user']
+        except:
+            return None
+
     def update_email(self, existing_emails, email):
         for email in existing_emails:
             self.request('/api/contact_infos/{}'.format(email['id']))

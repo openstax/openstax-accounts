@@ -238,6 +238,14 @@ class OpenstaxAccounts(object):
     def get_profile(self):
         raise NotImplementedError
 
+    def get_profile_by_username(self, username):
+        profile = None
+        for uname, info in self.users.items():
+            if username == uname:
+                profile = info['profile']
+                break
+        return profile
+
     def update_email(self, existing_emails, email):
         raise NotImplementedError
 

@@ -31,6 +31,9 @@ class IOpenstaxAccounts(Interface):
     def get_profile():
         """See ``/api/docs/v1/users/show``"""
 
+    def get_profile_by_username(username):
+        """See ``/api/docs/v1/application_users/find_by_username``"""
+
     def update_email(existing_emails, email):
         """ Unknown? """
 

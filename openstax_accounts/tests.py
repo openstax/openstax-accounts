@@ -20,7 +20,8 @@ from selenium import webdriver
 from zope.interface.verify import verifyClass
 
 
-STUB_INI = os.getenv('STUB_INI', 'testing.ini')
+here = os.path.abspath(os.path.dirname(__file__))
+STUB_INI = os.getenv('STUB_INI', os.path.join(here, 'testing.ini'))
 LOCAL_INI = os.getenv('LOCAL_INI', None)
 
 
@@ -294,6 +295,16 @@ class StubFunctionalTests(BaseFunctionalTests):
         expected = ['g:grp_luna', 'g:grp_sol',
                     'system.Authenticated', 'system.Everyone', 'u:babara']
         self.assertEqual(sorted(principals), expected)
+        # View another user's profile by username
+        self.driver.get(self.app_url)
+        self.follow_link('Find User by username (JSON)')
+        self.fill_in('Username:', 'fabian')
+        self.driver.find_element_by_xpath('//input[@type="submit"]').click()
+        info = json.loads(self.page_text())
+        expected = {'username': 'fabian', 'id': 6,
+                    'first_name': 'Test', 'last_name': 'User', 'title': None,
+                    'full_name': 'Test User'}
+        self.assertEqual(info, expected)
         # check messaging api
         self.driver.get(self.app_url)
         self.follow_link('Send Message')
@@ -338,6 +349,7 @@ class LocalFunctionalTests(BaseFunctionalTests):
         self._test_signup()
         self._test_login()
         self._test_search()
+        self._test_find_by_username()
         self._test_edit_profile()
 
     def _test_edit_profile(self):
@@ -371,6 +383,17 @@ class LocalFunctionalTests(BaseFunctionalTests):
         self.driver.get(self.app_url)
         self.follow_link('Log out')
         self.assertTrue('You are currently not logged in' in self.page_text())
+
+    def _test_find_by_username(self):
+        # Find the user by username
+        self.driver.get(self.app_url)
+        self.follow_link('Find User by username (JSON)')
+        # update profile data
+        self.fill_in('Username:', self.username)
+        self.driver.find_element_by_xpath('//input[@type="submit"]').click()
+        info = json.loads(self.page_text())
+        self.assertIn('id', info)
+        self.assertIn('username', info)
 
     def _test_signup(self):
         # check that we are not logged in

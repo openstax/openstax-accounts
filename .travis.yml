@@ -29,6 +29,6 @@ install:
   - python setup.py install
 env: DRIVER='Firefox'
 script:
-  - STUB_INI=test_stub.ini LOCAL_INI=test_local.ini xvfb-run python setup.py test
+  - LOCAL_INI=.travis_testing.ini xvfb-run python setup.py test
 notifications:
   email: false

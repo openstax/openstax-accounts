@@ -40,6 +40,9 @@ def menu(request):
     <li><a href="{membership_path}">Membership (JSON)</a></li>
     <li><a href="{user_search_path}">User Search</a></li>
     <li><a href="{user_search_json_path}">User Search (JSON)</a></li>
+    <li>
+      <a href="{user_find_by_username}">Find User by username (JSON)</a>
+    </li>
     <li><a href="{send_message_path}">Send Message</a></li>
     <li><a href="{login_logout_path}">{login_logout_text}</a></li>
 </ul>'''.format(
@@ -51,6 +54,7 @@ def menu(request):
         membership_path=request.route_url('membership'),
         user_search_path=request.route_url('user-search', format=''),
         user_search_json_path=request.route_url('user-search', format='.json'),
+        user_find_by_username=request.route_url('user-find-by-username'),
         send_message_path=request.route_url('send-message'),
         )
 
@@ -127,6 +131,27 @@ def user_search(request):
         return Response(json.dumps(users), content_type='application/json')
     return Response(menu(request) + '<p>User Search</p>{}'.format(users))
 
+
+@view_config(route_name='user-find-by-username', request_method='GET')
+def get_user_by_username(request):
+    return Response(menu(request) + """\
+                <p>Find a user by username</p>
+                <form method="post" action="">
+                    <label for="username">Username:</label>
+                    <input id="username" name="username" />
+                    <input type="submit" />
+                </form>\n""")
+
+
+@view_config(route_name='user-find-by-username', request_method='POST',
+             renderer='json')
+def post_user_by_username(request):
+    util = request.registry.getUtility(IOpenstaxAccounts)
+    username = request.POST['username']
+    profile = util.get_profile_by_username(username)
+    return profile
+
+
 @view_config(route_name='send-message')
 @authenticated_only
 def send_message(request):
@@ -162,6 +187,7 @@ def main(global_config, **settings):
     config.add_route('profile', '/profile')
     config.add_route('membership', '/membership.json')
     config.add_route('user-search', '/users/search{format:(.json)?}')
+    config.add_route('user-find-by-username', '/users/user-by-username')
     config.add_route('send-message', '/message')
 
     config.include('openstax_accounts')

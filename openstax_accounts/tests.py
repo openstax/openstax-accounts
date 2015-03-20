@@ -20,7 +20,8 @@ from selenium import webdriver
 from zope.interface.verify import verifyClass
 
 
-STUB_INI = os.getenv('STUB_INI', 'testing.ini')
+here = os.path.abspath(os.path.dirname(__file__))
+STUB_INI = os.getenv('STUB_INI', os.path.join(here, 'testing.ini'))
 LOCAL_INI = os.getenv('LOCAL_INI', None)
 
 

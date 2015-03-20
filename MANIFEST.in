@@ -1,0 +1,2 @@
+include *.ini *.ini.example
+recursive-include openstax_accounts *.ini *.py

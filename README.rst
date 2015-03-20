@@ -23,7 +23,12 @@ INSTALL
 TESTS
 -----
 
-1. Copy testing.ini.example to testing.ini and change the values
+1. Copy testing.ini to local_testing.ini and change the values.
+   This is only necessary if you intent to run the functional tests against
+   a local instance of openstax/accounts.
+   ::
+
+     cp testing.ini.example local_testing.ini
 
 2. Download chrome driver::
 
@@ -47,18 +52,11 @@ TESTS
 
    or install ``xvfb``
 
-6. Run browser tests with openstax/accounts::
+6. Run tests without openstax/accounts ::
 
-     ./bin/python setup.py test -s openstax_accounts.tests.FunctionalTests
+     xvfb-run ./bin/python setup.py test
 
-   or::
+   or to run all tests (include the ``LOCAL_INI``,
+   which requires an openstax/accounts install)::
 
-     xvfb-run ./bin/python setup.py test -s openstax_accounts.tests.FunctionalTests
-
-7. Run stub tests without openstax/accounts::
-
-     TESTING_INI=test_stub.ini ./bin/python setup.py test -s openstax_accounts.tests.StubTests
-
-   or::
-
-     TESTING_INI=test_stub.ini xvfb-run ./bin/python setup.py test -s openstax_accounts.tests.StubTests
+     LOCAL_INI=local_testing.ini xvfb-run ./bin/python setup.py test

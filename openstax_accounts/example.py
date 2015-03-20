@@ -26,7 +26,8 @@ def menu(request):
     user = request.user
     if user:
         login_status = 'logged in'
-        login_logout_path = request.route_url('logout')
+        login_logout_path = request.route_url('logout',
+                                              _query={'redirect': '/'})
         login_logout_text = 'Log out'
     else:
         login_status = 'not logged in'

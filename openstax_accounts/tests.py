@@ -292,8 +292,8 @@ class StubFunctionalTests(BaseFunctionalTests):
         self.follow_link('Membership (JSON)')
         principals = json.loads(self.page_text())
         self.assertEqual(len(principals), 5)
-        expected = ['g:grp_luna', 'g:grp_sol',
-                    'system.Authenticated', 'system.Everyone', 'u:babara']
+        expected = ['babara', 'g:grp_luna', 'g:grp_sol',
+                    'system.Authenticated', 'system.Everyone']
         self.assertEqual(sorted(principals), expected)
         # View another user's profile by username
         self.driver.get(self.app_url)

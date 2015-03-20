@@ -58,8 +58,14 @@ def callback(request):
 @view_config(route_name='logout')
 def logout(request):
     """Logs out the user from the application."""
-    forget(request)
     settings = request.registry.settings
-    redirects_to = settings.get(
+    forget(request)
+    referer = request.referer
+    redirect_to = request.params.get('redirect', referer)
+    default_redirect_to = settings.get(
         'openstax_accounts.logout_redirects_to', '/')
-    raise httpexceptions.HTTPFound(location=redirects_to)
+
+    if redirect_to == request.route_url('logout') or redirect_to is None:
+        redirect_to = default_redirect_to
+
+    raise httpexceptions.HTTPFound(location=redirect_to)

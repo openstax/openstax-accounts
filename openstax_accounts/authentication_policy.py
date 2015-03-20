@@ -92,7 +92,8 @@ class OpenstaxAccountsAuthenticationPolicy(object):
         userid = self.authenticated_userid(request)
         if userid:
             groups.append(Authenticated)
-            groups.append('u:{}'.format(userid))
+            groups.append(userid)
+        # 'g:<name>' indicate group names.
         groups.extend(['g:{}'.format(name)
                        for name in self._membership(request, userid)])
         return groups

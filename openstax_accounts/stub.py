@@ -100,7 +100,7 @@ class StubAuthenticationPolicy(object):
         userid = self.authenticated_userid(request)
         if userid:
             principals.append(Authenticated)
-            principals.append('u:{}'.format(userid))
+            principals.append(userid)
         principals.extend(['g:{}'.format(name)
                            for name in self._membership(request, userid)])
         return principals

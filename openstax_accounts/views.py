@@ -13,6 +13,7 @@ from pyramid import httpexceptions
 
 from .interfaces import *
 
+NO_CACHE = (0, {'public': True})
 
 def authenticated_only(function):
     """Decorates a view to ensure that it can only be accessed
@@ -40,7 +41,7 @@ def login(request):
     request.authenticated_userid  # triggers login
 
 
-@view_config(route_name='callback')
+@view_config(route_name='callback', http_cache=NO_CACHE)
 @authenticated_only
 def callback(request):
     """Called when the user returns from accounts with authenticated

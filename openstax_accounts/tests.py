@@ -15,6 +15,7 @@ try:
 except ImportError:
     import urllib.parse as urlparse  # renamed in python3
 
+from pyramid.paster import get_appsettings
 from pyramid.settings import asbool
 from selenium import webdriver
 from zope.interface.verify import verifyClass
@@ -113,6 +114,89 @@ class InterfaceTests(unittest.TestCase):
                     OpenstaxAccountsAuthenticationPolicy)
         verifyClass(self.openstaxaccounts_iface,
                     OpenstaxAccounts)
+
+
+class ViewTests(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.settings = settings = get_appsettings(STUB_INI)
+
+        from .example import main
+        app = main({}, **settings)
+
+        from webtest import TestApp
+        cls.testapp = TestApp(app)
+
+    def setUp(self):
+        # All tests start with a login.
+        self.login()
+        self.addCleanup(self.logout)
+
+    def login(self, username='aaron', password='password', login_url='/login',
+              headers=None):
+        headers = headers or {}
+        response = self.testapp.get(login_url, headers=headers, status=302)
+        response = self.testapp.post(response.headers['Location'], {
+            'username': username,
+            'password': password,
+            })
+        return self.testapp.get(response.headers['Location'])
+
+    def logout(self):
+        self.testapp.get('/logout', status=302)
+
+    def test_login(self):
+        self.logout()
+        response = self.login()
+        self.assertEqual(response.headers['Location'], 'http://localhost/')
+
+    def test_login_redirect_already_logged_in(self):
+        response = self.testapp.get(
+            '/login?redirect=http://example.com/logged_in', status=302)
+        self.assertEqual(response.headers['Location'],
+                'http://example.com/logged_in')
+
+    def test_login_redirect_loop(self):
+        self.logout()
+        response = self.login(headers={'REFERER': 'http://localhost/login'})
+        self.assertEqual(response.headers['Location'], 'http://localhost/')
+
+    def test_login_redirect_referer(self):
+        self.logout()
+        response = self.login(headers={'REFERER': 'http://example.com/'})
+        self.assertEqual(response.headers['Location'], 'http://example.com/')
+
+    def test_login_redirect(self):
+        self.logout()
+        response = self.login(
+            login_url='/login?redirect=http://example.com/logged_in')
+        self.assertEqual(response.headers['Location'],
+                         'http://example.com/logged_in')
+
+    def test_logout_redirect_loop(self):
+        response = self.testapp.get('/logout',
+                headers={'REFERER': 'http://localhost/logout'},
+                status=302)
+        self.assertEqual(response.headers['Location'], 'http://localhost/')
+        self.testapp.get('/profile', status=401)
+
+    def test_logout_redirect_referer(self):
+        response = self.testapp.get('/logout',
+                headers={'REFERER': 'http://example.com/logged_out'},
+                status=302)
+        self.assertEqual(response.headers['Location'],
+                'http://example.com/logged_out')
+        self.testapp.get('/profile', status=401)
+
+    def test_logout_redirect(self):
+        response = self.testapp.get(
+                '/logout?redirect=http://example.com/logged_out',
+                headers={'REFERER': 'http://example.com/'},
+                status=302)
+        self.assertEqual(response.headers['Location'],
+                'http://example.com/logged_out')
+        self.testapp.get('/profile', status=401)
 
 
 class BaseFunctionalTests(unittest.TestCase):

@@ -18,6 +18,7 @@ setup(
             ),
         tests_require=(
             'selenium',
+            'webtest',
             ),
         test_suite='openstax_accounts.tests',
         entry_points={

@@ -244,7 +244,7 @@ class BaseFunctionalTests(unittest.TestCase):
         cls.driver.get(urlparse.urljoin(cls.accounts_url, '/oauth/applications'))
         cls.driver.find_element_by_link_text('New Application').click()
         cls.class_fill_in('Name', 'pyramid')
-        cls.class_fill_in('Redirect uri', urlparse.urljoin(cls.app_url, '/callback'))
+        cls.class_fill_in('Callback urls', urlparse.urljoin(cls.app_url, '/callback'))
         cls.class_fill_in('Email subject prefix', '[pyramid]')
         cls.class_fill_in('Email from address', 'pyramid@e-mail-tester.appspotmail.com')
         cls.driver.find_element_by_id('application_trusted').click()

@@ -558,9 +558,10 @@ class LocalFunctionalTests(BaseFunctionalTests):
         self.follow_link('Log out')
         self.assertTrue('You are currently not logged in' in self.page_text())
 
-    @unittest.skip("manual testing only")
     @screenshot_on_error
     def test_facebook(self):
+        if not self.config.has_section('test:facebook'):
+            raise unittest.SkipTest('test:facebook not configured.')
         facebook = dict(self.config.items('test:facebook'))
         # check that we are not logged in
         self.driver.get(self.app_url)
@@ -594,9 +595,10 @@ class LocalFunctionalTests(BaseFunctionalTests):
         self.follow_link('Log out')
         self.assertTrue('You are currently not logged in' in self.page_text())
 
-    @unittest.skip("manual testing only")
     @screenshot_on_error
     def test_twitter(self):
+        if not self.config.has_section('test:twitter'):
+            raise unittest.SkipTest('test:twitter not configured.')
         twitter = dict(self.config.items('test:twitter'))
         # check that we are not logged in
         self.driver.get(self.app_url)
@@ -629,9 +631,10 @@ class LocalFunctionalTests(BaseFunctionalTests):
         self.follow_link('Log out')
         self.assertTrue('You are currently not logged in' in self.page_text())
 
-    @unittest.skip("manual testing only")
     @screenshot_on_error
     def test_google(self):
+        if not self.config.has_section('test:google'):
+            raise unittest.SkipTest('test:google not configured.')
         google = dict(self.config.items('test:google'))
         # check that we are not logged in
         self.driver.get(self.app_url)

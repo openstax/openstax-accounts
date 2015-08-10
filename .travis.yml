@@ -1,9 +1,10 @@
 language: python
+sudo: false
 python:
   - "2.7"
+addons:
+  postgresql: "9.3"
 before_install:
-  - sudo apt-get update
-
   # Install openstax/accounts
   - git clone https://github.com/openstax/accounts
   - cd accounts
@@ -14,21 +15,21 @@ before_install:
   - "echo \"user = FactoryGirl.create :user, :admin, :terms_agreed, username: 'admin'\" >>db/seeds.rb"
   - "echo \"identity = FactoryGirl.create :identity, user: user, password: 'password'\" >>db/seeds.rb"
   - "echo \"FactoryGirl.create :authentication, provider: 'identity', uid: identity.id.to_s, user: user\" >>db/seeds.rb"
+  - psql -c "CREATE USER ox_accounts WITH PASSWORD 'ox_accounts';" -U postgres
+  - psql -c 'CREATE DATABASE ox_accounts_test OWNER = ox_accounts;' -U postgres
   - bundle exec rake db:setup
   # Run openstax/accounts in the background
   - bundle exec thin start -p 3000 --ssl --ssl-verify --ssl-key-file ../test_server.key --ssl-cert-file ../test_server.crt &
   - cd ..
 
-  # Install xvfb
-  - sudo apt-get install --yes xvfb
-
-  # Install firefox
-  - sudo apt-get install --yes firefox
+  # Set up xvfb
+  - export DISPLAY=:99.0
+  - sh -e /etc/init.d/xvfb start
 
 install:
   - python setup.py install
 env: DRIVER='Firefox'
 script:
-  - LOCAL_INI=.travis_testing.ini xvfb-run python setup.py test
+  - LOCAL_INI=.travis_testing.ini python setup.py test
 notifications:
   email: false

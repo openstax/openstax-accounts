@@ -16,8 +16,7 @@ before_install:
   - "echo \"user = FactoryGirl.create :user, :admin, :terms_agreed, username: 'admin'\" >>db/seeds.rb"
   - "echo \"identity = FactoryGirl.create :identity, user: user, password: 'password'\" >>db/seeds.rb"
   - "echo \"FactoryGirl.create :authentication, provider: 'identity', uid: identity.id.to_s, user: user\" >>db/seeds.rb"
-  - psql -c "CREATE USER ox_accounts WITH PASSWORD 'ox_accounts';" -U postgres
-  - psql -c 'CREATE DATABASE ox_accounts_test OWNER = ox_accounts;' -U postgres
+  - psql -c "CREATE USER ox_accounts WITH CREATEDB PASSWORD 'ox_accounts';" -U postgres
   - bundle exec rake db:setup
   # Run openstax/accounts in the background
   - bundle exec thin start -p 3000 --ssl --ssl-verify --ssl-key-file ../test_server.key --ssl-cert-file ../test_server.crt &

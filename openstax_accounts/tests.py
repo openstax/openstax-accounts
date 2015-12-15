@@ -235,7 +235,7 @@ class BaseFunctionalTests(unittest.TestCase):
 
         # login as admin in openstax/accounts
         cls.driver.get(urlparse.urljoin(cls.accounts_url, '/login'))
-        cls.class_fill_in('Username', admin_login)
+        cls.class_fill_in('Username / Email', admin_login)
         cls.class_fill_in('Password', admin_password)
         cls.driver.find_element_by_xpath('//button[text()="Sign in"]').click()
         time.sleep(5)

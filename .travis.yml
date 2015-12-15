@@ -10,6 +10,7 @@ before_install:
   - cd accounts
   - rvm install $(cat .ruby-version)
   - rvm use $(cat .ruby-version)
+  - cp config/secret_settings.yml.example config/secret_settings.yml
   - travis_retry bundle install --without production
   # Add admin user
   - "echo \"user = FactoryGirl.create :user, :admin, :terms_agreed, username: 'admin'\" >>db/seeds.rb"
